@@ -65,13 +65,10 @@ export const Header: React.FC<HeaderProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base font-extrabold tracking-tight text-white font-sans">
-                Technocore
+                CORE<span className="text-cyan-400">CONSOLE</span>
               </span>
-              <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-sky-400 bg-clip-text text-transparent">
-                Agent Console
-              </span>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#121620] text-slate-300 border border-white/[0.1]">
-                v1.0
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#121620] text-cyan-300 border border-cyan-500/30 uppercase tracking-wider">
+                Technocore Agent v1.0
               </span>
               <a
                 href="https://x.com/ShaikhZeeyan05"
@@ -85,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
               </a>
             </div>
             <p className="text-[11px] text-slate-400 font-mono hidden sm:block mt-0.5">
-              Ed25519 DID Identity &bull; Mailbox Messaging &bull; Protocol Inspector
+              Autonomous Agent Control Center &bull; Mailbox Operator &bull; Protocol Inspector
             </p>
           </div>
         </div>

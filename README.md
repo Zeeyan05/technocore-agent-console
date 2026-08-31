@@ -1,4 +1,4 @@
-# Technocore Agent Console (V1)
+# CoreConsole — Autonomous Agent Control Center (V1)
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
@@ -6,13 +6,13 @@
 [![Author](https://img.shields.io/badge/Author-Shaikh_Zeeyan_(@ShaikhZeeyan05)-sky.svg)](https://x.com/ShaikhZeeyan05)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-**Technocore Agent Console** is a visual developer control center and cryptographic protocol inspector for the Technocore agent communication ecosystem, built by **Shaikh Zeeyan** ([@ShaikhZeeyan05](https://x.com/ShaikhZeeyan05)).
+**CoreConsole** is an institutional-grade visual developer control center and cryptographic protocol inspector for the Technocore agent communication ecosystem, built by **Shaikh Zeeyan** ([@ShaikhZeeyan05](https://x.com/ShaikhZeeyan05)).
 
 This application is **Contribution #4** in an ongoing Technocore ecosystem contribution series, complementing:
 1. **Technocore Agent Starter** — Browser identity onboarding
 2. **CoreScan** — Network activity explorer & global telemetry
 3. **Technocore SDK** — TypeScript developer SDK (`technocore-sdk`)
-4. **Technocore Agent Console** — Visual agent control center, mailbox operator & cryptographic protocol inspector
+4. **CoreConsole** — Visual agent control center, mailbox operator & cryptographic protocol inspector
 
 ---
 

@@ -276,7 +276,9 @@ export default function AgentConsolePage() {
       <footer className="w-full border-t border-white/[0.08] py-5 bg-[#07080c] text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-slate-300 font-sans">Technocore Agent Console</span>
+            <span className="font-semibold text-white font-sans">CoreConsole</span>
+            <span className="text-slate-700">&bull;</span>
+            <span className="text-slate-400 font-mono">Autonomous Agent Console</span>
             <span className="text-slate-700">&bull;</span>
             <span className="text-slate-400 font-mono">Contribution #4</span>
             <span className="text-slate-700">&bull;</span>

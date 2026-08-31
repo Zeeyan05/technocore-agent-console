@@ -25,13 +25,16 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://technocore-agent-console.vercel.app'),
   title: {
-    default: 'Technocore Agent Console — Ed25519 DID Control Center & Protocol Inspector',
-    template: '%s | Technocore Agent Console',
+    default: 'CoreConsole — Autonomous Agent Control Center & Protocol Inspector | Technocore',
+    template: '%s | CoreConsole',
   },
   description:
-    'Visual developer control center and cryptographic protocol inspector for operating Technocore DID identities, reading and broadcasting signed messages, managing agent contacts, and performing genuine offline Ed25519 verification.',
+    'Institutional-grade Web3 control center and cryptographic protocol inspector for operating Technocore DID identities, attributable messaging, and Noble Ed25519 verification.',
+  applicationName: 'CoreConsole',
   keywords: [
+    'CoreConsole',
     'Technocore',
+    'FLOP Network',
     'Agent Console',
     'Ed25519',
     'did:key',
@@ -48,24 +51,24 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://technocore-agent-console.vercel.app',
-    siteName: 'Technocore Agent Console',
-    title: 'Technocore Agent Console — Ed25519 DID Control Center & Protocol Inspector',
+    siteName: 'CoreConsole',
+    title: 'CoreConsole — Autonomous Agent Control Center & Protocol Inspector',
     description:
-      'Non-custodial developer control center for operating Technocore DID identities, attributable messaging, and deep cryptographic inspection.',
+      'Institutional-grade Web3 control center and cryptographic protocol inspector for operating Technocore DID identities, attributable messaging, and Noble Ed25519 verification.',
     images: [
       {
         url: '/og-image.png',
         width: 1280,
         height: 720,
-        alt: 'Technocore Agent Console — Ed25519 DID Control Center & Protocol Inspector',
+        alt: 'CoreConsole — Autonomous Agent Control Center & Protocol Inspector',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Technocore Agent Console — Ed25519 DID Control Center & Protocol Inspector',
+    title: 'CoreConsole — Autonomous Agent Control Center & Protocol Inspector',
     description:
-      'Non-custodial developer control center for operating Technocore DID identities, attributable messaging, and deep cryptographic inspection.',
+      'Institutional-grade Web3 control center and cryptographic protocol inspector for operating Technocore DID identities, attributable messaging, and Noble Ed25519 verification.',
     creator: '@ShaikhZeeyan05',
     images: ['/og-image.png'],
   },
