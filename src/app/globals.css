@@ -1,50 +1,61 @@
 @import "tailwindcss";
 
 :root {
-  --bg-main: #07080c;
-  --bg-card: #0d0f17;
-  --bg-card-hover: #131722;
-  --bg-surface: #171b28;
-  --bg-input: #0a0c13;
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-medium: rgba(255, 255, 255, 0.13);
+  /* Surface Tokens (Deep Carbon Zinc) */
+  --surface-0: #08090c;
+  --surface-1: #0d1016;
+  --surface-2: #121620;
+  --surface-3: #181e2b;
+  --surface-input: #0b0e14;
+  --surface-hover: #151a26;
+  --surface-active: #1e2535;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.14);
   --border-strong: rgba(255, 255, 255, 0.22);
-  --border-active: rgba(0, 242, 254, 0.45);
-  
-  --accent-cyan: #00f2fe;
-  --accent-cyan-tint: rgba(0, 242, 254, 0.1);
-  --accent-emerald: #10b981;
-  --accent-emerald-tint: rgba(16, 185, 129, 0.1);
+  --border-focus: rgba(56, 189, 248, 0.5);
+
+  /* Web3 Accents */
+  --accent-cyan: #38bdf8;
+  --accent-cyan-tint: rgba(56, 189, 248, 0.1);
+  --accent-green: #10b981;
+  --accent-green-tint: rgba(16, 185, 129, 0.1);
   --accent-amber: #f59e0b;
-  --accent-purple: #a855f7;
-  
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  
+  --accent-rose: #ef4444;
+
+  /* Typography */
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-faint: #4b5563;
+
+  /* Fonts */
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', Menlo, Consolas, monospace;
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
-  background-color: var(--bg-main);
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(0, 242, 254, 0.04) 0%, transparent 60%),
-    radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+  background-color: var(--surface-0);
   color: var(--text-primary);
   font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
   overflow-x: hidden;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Monospace font utility for cryptographic tokens */
 .font-mono {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Custom sleek dark scrollbars */
@@ -54,96 +65,55 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #090a0f;
+  background: var(--surface-0);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e2333;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #333c56;
+  background: rgba(255, 255, 255, 0.22);
 }
 
-/* Glassmorphism Card System */
-.glass-panel {
-  background: rgba(13, 15, 23, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Institutional Card Panels */
+.web3-card {
+  background: var(--surface-1);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  border-radius: 8px;
+  transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.glass-panel:hover {
+.web3-card:hover {
   border-color: var(--border-medium);
 }
 
-.glass-panel-interactive:hover {
-  border-color: rgba(0, 242, 254, 0.35);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(0, 242, 254, 0.15);
-  transform: translateY(-1px);
+.web3-card-interactive:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-medium);
 }
 
-/* Ambient glow utilities */
-.glow-cyan {
-  box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
-}
-
-.glow-purple {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
-}
-
-.glow-amber {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
-}
-
-/* Modal backdrop glassmorphism */
+/* Modal backdrop */
 .modal-backdrop {
-  background: rgba(4, 5, 8, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(4, 5, 8, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-/* Beacon pulse animations */
-@keyframes pulse-beacon {
+/* Live status beacon (clean, subtle pulse) */
+@keyframes live-pulse {
   0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    opacity: 1;
   }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  50% {
+    opacity: 0.4;
   }
   100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    opacity: 1;
   }
 }
 
-.live-beacon {
-  animation: pulse-beacon 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
-}
-
-/* Hex dump styling */
-.hex-offset {
-  color: #64748b;
-  user-select: none;
-}
-
-.hex-byte {
-  color: #38bdf8;
-}
-
-.hex-byte-alt {
-  color: #818cf8;
-}
-
-.hex-ascii {
-  color: #34d399;
+.live-dot {
+  animation: live-pulse 2s infinite ease-in-out;
 }

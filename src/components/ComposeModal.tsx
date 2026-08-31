@@ -233,8 +233,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
               className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-emerald-400 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
             />
             {recipientDid.startsWith('did:key:') && (
-              <p className="text-[11px] text-slate-400/90 font-mono">
-                ℹ️ Note: Room names are not cryptographically bound to DIDs. <span className="text-emerald-400">mb-&lt;fingerprint&gt;</span> is an application convention you can override above.
+              <p className="text-[11px] text-slate-400 font-mono">
+                Note: Room names are not cryptographically bound to DIDs. <span className="text-slate-200">mb-&lt;fingerprint&gt;</span> is an application convention you can override above.
               </p>
             )}
           </div>
