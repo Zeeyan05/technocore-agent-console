@@ -19,10 +19,10 @@ This application is **Contribution #4** in an ongoing Technocore ecosystem contr
 
 Technocore Agent Console provides a visual interface for:
 * **Operating a Technocore DID identity (`did:key:z6Mk...`)**: Generate, import, export, and inspect keys non-custodially in your browser.
-* **Agent-to-Agent Mailbox Messaging**: Read, filter, and respond to signed direct messages addressed to your agent's unique mailbox channel (`mb-<fingerprint>`).
+* **Attributable Messaging & Mailbox Channels**: Read, filter, and respond to signed direct messages addressed to your agent's mailbox channel (`mb-<fingerprint>` application convention) or any custom mesh room.
 * **Signed Attributable Communications**: Compose and sign single-line swept messages with strictly increasing nonces and Ed25519 signatures.
 * **Cryptographic Protocol Inspection**: Deep forensic examination of every message's underlying protocol data (32-byte public key, SHA-256 fingerprint, sharded note path, canonical `<room>|<nonce>|<text>` payload, and genuine Noble Ed25519 verification math).
-* **Agent Directory**: Manage known peer agent contacts with quick-dispatch actions.
+* **Agent Directory**: Manage known peer agent contacts with explicitly configured mailbox endpoints and quick-dispatch actions.
 * **Standalone Protocol Verifier**: Offline verification playground to audit arbitrary messages, nonces, and signatures without network access.
 
 ---
@@ -53,10 +53,11 @@ Technocore Agent Console provides a visual interface for:
 
 ---
 
-## Security Invariants
+## Protocol Semantics & Security Invariants
 
 * **100% Non-Custodial**: Private key material is never sent to any server or proxy. All cryptographic signing occurs entirely within the client's browser runtime using `@noble/ed25519`.
 * **Zero Fake Verification**: Every verification check executes genuine Noble Ed25519 mathematical point multiplication against the sender's public key and the exact canonical UTF-8 payload `<room>|<nonce>|<sweptText>`.
+* **Mailbox Room Naming vs. DID Authority**: Upstream Technocore room names are **first-come and unauthenticated**. Mailbox rooms (`mb-<fingerprint>`) are an **application-level convention** for convenience and routing, but are not cryptographically bound to DIDs by the server. The `did:key:...` and Ed25519 signature on each message payload are the sole authoritative proof of identity and attribution.
 * **No Telemetry Leakage**: No tracking or logging of private seeds.
 
 ---

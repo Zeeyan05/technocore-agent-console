@@ -38,7 +38,13 @@ export function didNotePath(did: string): {
 }
 
 /**
- * Derive the agent's default mailbox room name: `mb-<fingerprint>`
+ * Derive the suggested application mailbox room name: `mb-<fingerprint>`
+ *
+ * NOTE ON PROTOCOL SEMANTICS:
+ * This is an application-level convention. Upstream Technocore does NOT
+ * cryptographically bind mailbox/room names to DIDs. Room names are first-come
+ * and unauthenticated; the DID and signature on the message payload are the
+ * authoritative identity.
  */
 export function agentMailboxRoom(did: string): string {
   const fp = didFingerprint(did);

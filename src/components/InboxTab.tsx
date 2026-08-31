@@ -34,7 +34,7 @@ interface InboxTabProps {
   onMarkAllAsRead: () => void;
   onInspectMessage: (msg: VerifiedMessage, room: string) => void;
   onOpenCompose: (recipient?: string) => void;
-  onAddContact: (contact: { nickname: string; did: string }) => void;
+  onAddContact: (contact: { nickname: string; did: string; mailboxRoom?: string; notes?: string }) => void;
   onCopyText: (text: string, label: string) => void;
   copiedKey: string | null;
 }

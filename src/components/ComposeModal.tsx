@@ -33,30 +33,61 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   onSuccess,
   onPlaySendAudio,
 }) => {
-  const [recipient, setRecipient] = useState<string>(defaultRecipient);
-  const [roomOverride, setRoomOverride] = useState<string>(defaultRoom);
+  const [recipientDid, setRecipientDid] = useState<string>(defaultRecipient.startsWith('did:key:') ? defaultRecipient : '');
+  const [targetRoom, setTargetRoom] = useState<string>(() => {
+    if (defaultRoom) return defaultRoom;
+    if (defaultRecipient && !defaultRecipient.startsWith('did:key:')) return defaultRecipient;
+    if (defaultRecipient && defaultRecipient.startsWith('did:key:') && isValidDid(defaultRecipient)) {
+      return agentMailboxRoom(defaultRecipient);
+    }
+    return identity ? identity.mailboxRoom : 'lobby';
+  });
   const [text, setText] = useState<string>('');
   const [status, setStatus] = useState<'idle' | 'signing' | 'sending' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      if (defaultRecipient.startsWith('did:key:')) {
+        setRecipientDid(defaultRecipient);
+        if (isValidDid(defaultRecipient)) {
+          setTargetRoom(agentMailboxRoom(defaultRecipient));
+        }
+      } else if (defaultRoom) {
+        setTargetRoom(defaultRoom);
+        setRecipientDid('');
+      } else if (defaultRecipient) {
+        setTargetRoom(defaultRecipient);
+        setRecipientDid('');
+      } else {
+        setTargetRoom(identity ? identity.mailboxRoom : 'lobby');
+        setRecipientDid('');
+      }
+      setStatus('idle');
+      setErrorMessage(null);
+    }
+  }, [isOpen, defaultRecipient, defaultRoom, identity]);
+
   const sweptText = useMemo(() => sweep(text), [text]);
 
-  // Determine effective target room: if recipient is a DID, target its mailbox mb-<fingerprint>
   const effectiveRoom = useMemo(() => {
-    if (roomOverride.trim()) return roomOverride.trim();
-    const cleanRec = recipient.trim();
-    if (cleanRec.startsWith('did:key:')) {
-      if (isValidDid(cleanRec)) {
-        return agentMailboxRoom(cleanRec);
-      }
-      return 'invalid-did';
+    const cleanRoom = targetRoom.trim();
+    if (cleanRoom) return cleanRoom;
+    if (recipientDid.trim() && isValidDid(recipientDid.trim())) {
+      return agentMailboxRoom(recipientDid.trim());
     }
-    if (cleanRec.startsWith('mb-') || cleanRec.startsWith('d-') || cleanRec.startsWith('p-')) {
-      return cleanRec;
-    }
-    if (cleanRec) return cleanRec;
     return identity ? identity.mailboxRoom : 'lobby';
-  }, [recipient, roomOverride, identity]);
+  }, [targetRoom, recipientDid, identity]);
+
+  const handleContactSelect = (contactDid: string) => {
+    setRecipientDid(contactDid);
+    const found = contacts.find((c) => c.did === contactDid);
+    if (found?.mailboxRoom) {
+      setTargetRoom(found.mailboxRoom);
+    } else if (isValidDid(contactDid)) {
+      setTargetRoom(agentMailboxRoom(contactDid));
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -64,6 +95,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     e.preventDefault();
     if (!identity) {
       setErrorMessage('No active identity loaded. Please generate or import an identity first.');
+      setStatus('error');
+      return;
+    }
+    if (!effectiveRoom) {
+      setErrorMessage('Please specify a target mailbox / channel room.');
       setStatus('error');
       return;
     }
@@ -142,17 +178,17 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             </span>
           </div>
 
-          {/* Recipient / Target Room */}
+          {/* Recipient DID (Optional / Contact lookup) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-300">Recipient / Room</label>
+              <label className="text-xs font-medium text-slate-300">Recipient DID (Optional Attribution)</label>
               {contacts.length > 0 && (
                 <div className="flex items-center gap-1 text-[11px] text-slate-400">
                   <Users className="w-3 h-3" />
                   <span>Quick Pick:</span>
                   <select
                     onChange={(e) => {
-                      if (e.target.value) setRecipient(e.target.value);
+                      if (e.target.value) handleContactSelect(e.target.value);
                     }}
                     className="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-cyan-300 font-mono"
                     defaultValue=""
@@ -169,14 +205,38 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             </div>
             <input
               type="text"
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              placeholder="Enter recipient DID (did:key:z6Mk...) or room name (lobby, mb-...)"
-              className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+              value={recipientDid}
+              onChange={(e) => {
+                const val = e.target.value;
+                setRecipientDid(val);
+                if (val.startsWith('did:key:') && isValidDid(val.trim())) {
+                  setTargetRoom(agentMailboxRoom(val.trim()));
+                }
+              }}
+              placeholder="did:key:z6Mk... (optional peer agent identity)"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-cyan-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
             />
-            <div className="text-[11px] text-slate-400 font-mono">
-              Target Channel: <span className="text-emerald-400 font-semibold">{effectiveRoom}</span>
+          </div>
+
+          {/* Target Channel / Room (Authoritative Network Destination) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-slate-300">Target Mailbox / Channel Room</label>
+              <span className="text-[10px] text-slate-500 font-mono">First-come destination</span>
             </div>
+            <input
+              type="text"
+              value={targetRoom}
+              onChange={(e) => setTargetRoom(e.target.value)}
+              placeholder="e.g. mb-e3b0c44298fc1c14, lobby, sdk-test, d-myroom"
+              required
+              className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-emerald-400 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+            {recipientDid.startsWith('did:key:') && (
+              <p className="text-[11px] text-slate-400/90 font-mono">
+                ℹ️ Note: Room names are not cryptographically bound to DIDs. <span className="text-emerald-400">mb-&lt;fingerprint&gt;</span> is an application convention you can override above.
+              </p>
+            )}
           </div>
 
           {/* Message Body */}

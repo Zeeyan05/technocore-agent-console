@@ -14,11 +14,12 @@ import {
 } from 'lucide-react';
 import { Identicon } from './Identicon';
 import { formatDidAbbreviated } from '@/lib/crypto/did';
+import { agentMailboxRoom } from '@/lib/crypto/fingerprint';
 import type { AgentContact } from '@/types/technocore';
 
 interface ContactsTabProps {
   contacts: AgentContact[];
-  onAddContact: (contact: { nickname: string; did: string; notes?: string }) => void;
+  onAddContact: (contact: { nickname: string; did: string; mailboxRoom?: string; notes?: string }) => void;
   onDeleteContact: (id: string) => void;
   onOpenCompose: (recipientDid: string) => void;
   onSelectMailbox: (room: string) => void;
@@ -39,6 +40,7 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [newNick, setNewNick] = useState<string>('');
   const [newDid, setNewDid] = useState<string>('');
+  const [newMailbox, setNewMailbox] = useState<string>('');
   const [newNotes, setNewNotes] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +50,7 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({
     return (
       c.nickname.toLowerCase().includes(q) ||
       c.did.toLowerCase().includes(q) ||
+      c.mailboxRoom.toLowerCase().includes(q) ||
       (c.notes && c.notes.toLowerCase().includes(q))
     );
   });
@@ -59,10 +62,12 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({
       onAddContact({
         nickname: newNick,
         did: newDid,
+        mailboxRoom: newMailbox.trim() || undefined,
         notes: newNotes,
       });
       setNewNick('');
       setNewDid('');
+      setNewMailbox('');
       setNewNotes('');
       setIsAdding(false);
     } catch (err: unknown) {
@@ -81,7 +86,7 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({
           <div>
             <h2 className="text-sm font-semibold text-white">Agent Directory</h2>
             <p className="text-xs text-slate-400">
-              Known Technocore agent DIDs and direct mailbox endpoints
+              Known Technocore agent DIDs and explicitly configured mailbox channels
             </p>
           </div>
         </div>
@@ -127,11 +132,19 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">DID (did:key:z6Mk...)</label>
+              <label className="text-xs font-medium text-slate-300">Signer DID (did:key:z6Mk...)</label>
               <input
                 type="text"
                 value={newDid}
-                onChange={(e) => setNewDid(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewDid(val);
+                  if (val.startsWith('did:key:') && val.length === 56 && !newMailbox) {
+                    try {
+                      setNewMailbox(agentMailboxRoom(val));
+                    } catch {}
+                  }
+                }}
                 placeholder="did:key:z6Mk..."
                 required
                 className="w-full px-3 py-2 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-cyan-300 focus:outline-none focus:border-purple-500"
@@ -139,15 +152,31 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Notes (Optional)</label>
-            <input
-              type="text"
-              value={newNotes}
-              onChange={(e) => setNewNotes(e.target.value)}
-              placeholder="e.g. Core verification node / relay partner"
-              className="w-full px-3 py-2 rounded-lg bg-black/50 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-purple-500"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Configured Mailbox Room</label>
+              <input
+                type="text"
+                value={newMailbox}
+                onChange={(e) => setNewMailbox(e.target.value)}
+                placeholder="e.g. mb-e3b0c44298fc1c14 or custom room"
+                className="w-full px-3 py-2 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-emerald-400 focus:outline-none focus:border-purple-500"
+              />
+              <span className="text-[10px] text-slate-500 font-mono">
+                App convention: mb-&lt;fingerprint&gt; (room names are first-come, not DID-bound)
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Notes (Optional)</label>
+              <input
+                type="text"
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+                placeholder="e.g. Core verification node / relay partner"
+                className="w-full px-3 py-2 rounded-lg bg-black/50 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-purple-500"
+              />
+            </div>
           </div>
 
           {error && <div className="text-xs text-rose-400 font-mono">{error}</div>}

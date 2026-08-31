@@ -161,9 +161,12 @@ export const IdentityTab: React.FC<IdentityTabProps> = ({
             </div>
 
             <div className="p-4 bg-black/40 border border-slate-800 rounded-xl space-y-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Default Mailbox Channel
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Suggested Mailbox Room
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">App Convention</span>
+              </div>
               <div className="flex items-center justify-between font-mono text-xs text-cyan-300">
                 <span>{identity.mailboxRoom}</span>
                 <button
@@ -173,6 +176,9 @@ export const IdentityTab: React.FC<IdentityTabProps> = ({
                   {copiedKey === 'Mailbox Room' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
+              <p className="text-[10px] text-slate-500 font-mono">
+                First-come room name (not cryptographically bound to DID).
+              </p>
             </div>
 
             <div className="p-4 bg-black/40 border border-slate-800 rounded-xl space-y-2">

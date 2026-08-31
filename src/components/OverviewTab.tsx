@@ -86,7 +86,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
               </div>
               <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-400 pt-1">
                 <span>Fingerprint: <span className="text-purple-300">{identity?.fingerprint || 'N/A'}</span></span>
-                <span>Mailbox Room: <span className="text-emerald-400 font-semibold">{identity?.mailboxRoom || 'N/A'}</span></span>
+                <span>Mailbox Room (Convention): <span className="text-emerald-400 font-semibold">{identity?.mailboxRoom || 'N/A'}</span></span>
               </div>
             </div>
           </div>
@@ -132,7 +132,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             {unreadCount}
           </div>
           <span className="text-[11px] text-slate-500 font-mono mt-1 block">
-            Channel: {identity?.mailboxRoom || 'mb-...'}
+            Channel (Convention): {identity?.mailboxRoom || 'mb-...'}
           </span>
         </div>
 

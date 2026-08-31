@@ -43,11 +43,13 @@ export function useContacts() {
   }, []);
 
   const addContact = useCallback(
-    (params: { nickname: string; did: string; notes?: string }) => {
+    (params: { nickname: string; did: string; mailboxRoom?: string; notes?: string }) => {
       const cleanDid = params.did.trim();
       if (!isValidDid(cleanDid)) {
         throw new Error('Invalid Technocore DID. Expected 56 characters starting with did:key:z6Mk...');
       }
+
+      const explicitMailbox = params.mailboxRoom?.trim() || agentMailboxRoom(cleanDid);
 
       const newContact: AgentContact = {
         id: `contact-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -55,7 +57,7 @@ export function useContacts() {
         did: cleanDid,
         notes: params.notes?.trim(),
         createdAt: Date.now(),
-        mailboxRoom: agentMailboxRoom(cleanDid),
+        mailboxRoom: explicitMailbox,
       };
 
       setContacts((prev) => {
