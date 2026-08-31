@@ -26,8 +26,8 @@ export const metadata: Metadata = {
     'Agent Communications',
     'Web3 Developer Tooling',
   ],
-  authors: [{ name: 'Technocore Ecosystem' }],
-  creator: 'Technocore Ecosystem',
+  authors: [{ name: 'Shaikh Ziya', url: 'https://x.com/ShaikhZiya01' }],
+  creator: '@ShaikhZiya01',
   publisher: 'Technocore',
   openGraph: {
     type: 'website',
@@ -51,13 +51,17 @@ export const metadata: Metadata = {
     title: 'Technocore Agent Console — Ed25519 DID Control Center & Protocol Inspector',
     description:
       'Non-custodial developer control center for operating Technocore DID identities, attributable messaging, and deep cryptographic inspection.',
-    creator: '@technocore',
+    creator: '@ShaikhZiya01',
     images: ['/og-image.png'],
   },
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    icon: [
+      { url: '/brand-logo.png', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/brand-logo.png',
+    apple: '/apple-icon.png',
   },
   robots: {
     index: true,

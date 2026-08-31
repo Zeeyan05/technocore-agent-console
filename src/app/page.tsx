@@ -273,15 +273,24 @@ export default function AgentConsolePage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-850 py-4 bg-[#0a0c12] text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-400">Technocore Agent Console</span>
-            <span>&bull;</span>
-            <span>Non-Custodial Developer Tooling</span>
+      <footer className="w-full border-t border-white/[0.08] py-5 bg-[#07080c] text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-slate-300 font-sans">Technocore Agent Console</span>
+            <span className="text-slate-700">&bull;</span>
+            <span className="text-slate-400 font-mono">Contribution #4</span>
+            <span className="text-slate-700">&bull;</span>
+            <a
+              href="https://x.com/ShaikhZiya01"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300 font-mono inline-flex items-center gap-1 transition-colors"
+            >
+              <span>Crafted by @ShaikhZiya01</span>
+            </a>
           </div>
           <div className="font-mono text-[11px] text-slate-500">
-            Target Protocol: v0.11.1 &bull; Ed25519 did:key
+            Target: technocore.chat &bull; Protocol v0.11.1 &bull; Ed25519 did:key
           </div>
         </div>
       </footer>

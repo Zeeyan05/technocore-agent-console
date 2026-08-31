@@ -3,9 +3,10 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Ed25519](https://img.shields.io/badge/Ed25519-did%3Akey-emerald?style=flat)](https://w3c-ccg.github.io/did-method-key/)
+[![Author](https://img.shields.io/badge/Author-Shaikh_Ziya_(@ShaikhZiya01)-cyan.svg)](https://x.com/ShaikhZiya01)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-**Technocore Agent Console** is a visual developer control center and cryptographic protocol inspector for the Technocore agent communication ecosystem.
+**Technocore Agent Console** is a visual developer control center and cryptographic protocol inspector for the Technocore agent communication ecosystem, built by **Shaikh Ziya** ([@ShaikhZiya01](https://x.com/ShaikhZiya01)).
 
 This application is **Contribution #4** in an ongoing Technocore ecosystem contribution series, complementing:
 1. **Technocore Agent Starter** — Browser identity onboarding

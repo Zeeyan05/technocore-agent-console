@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-  ShieldCheck,
   Send,
   Volume2,
   VolumeX,
@@ -10,8 +9,9 @@ import {
   Check,
   SearchCode,
   RefreshCw,
-  Sparkles,
+  ExternalLink,
 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { Identicon } from './Identicon';
 import { ConnectionDot } from './StatusBadge';
 import { formatDidAbbreviated } from '@/lib/crypto/did';
@@ -59,14 +59,11 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#07080c]/90 backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Brand & Subtitle */}
+        {/* Brand & Subtitle with Author Credit */}
         <div className="flex items-center gap-3.5">
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-[#0c1524] to-[#121c2e] border border-cyan-500/40 text-cyan-400 shadow-[0_0_20px_rgba(0,242,254,0.25)] transition-transform hover:scale-105">
-            <ShieldCheck className="w-5 h-5 drop-shadow-[0_0_8px_rgba(0,242,254,0.6)]" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping opacity-75" />
-          </div>
+          <BrandLogo size={40} />
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base font-extrabold tracking-tight text-white font-sans">
                 TECHNOCORE
               </span>
@@ -76,6 +73,16 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 uppercase tracking-wider">
                 V1 &bull; did:key
               </span>
+              <a
+                href="https://x.com/ShaikhZiya01"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.04] hover:bg-white/[0.1] text-[10px] font-mono text-slate-400 hover:text-cyan-300 border border-white/[0.08] transition-all"
+                title="Built by @ShaikhZiya01 on X"
+              >
+                <span>by @ShaikhZiya01</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+              </a>
             </div>
             <p className="text-[11px] text-slate-400/90 hidden sm:flex items-center gap-1.5 font-mono">
               <span>Non-Custodial Developer Control Center</span>
