@@ -74,13 +74,13 @@ export const Header: React.FC<HeaderProps> = ({
                 v1.0
               </span>
               <a
-                href="https://x.com/ShaikhZiya01"
+                href="https://x.com/ShaikhZeeyan05"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-slate-500 hover:text-sky-300 transition-colors"
-                title="Shaikh Ziya on X"
+                title="Shaikh Zeeyan on X"
               >
-                <span>by @ShaikhZiya01</span>
+                <span>by @ShaikhZeeyan05</span>
                 <ExternalLink className="w-2.5 h-2.5 opacity-60" />
               </a>
             </div>

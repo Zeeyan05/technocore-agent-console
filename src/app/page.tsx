@@ -281,12 +281,12 @@ export default function AgentConsolePage() {
             <span className="text-slate-400 font-mono">Contribution #4</span>
             <span className="text-slate-700">&bull;</span>
             <a
-              href="https://x.com/ShaikhZiya01"
+              href="https://x.com/ShaikhZeeyan05"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-cyan-400 hover:text-cyan-300 font-mono inline-flex items-center gap-1 transition-colors"
+              className="text-sky-400 hover:text-sky-300 font-mono inline-flex items-center gap-1 transition-colors"
             >
-              <span>Crafted by @ShaikhZiya01</span>
+              <span>Crafted by @ShaikhZeeyan05</span>
             </a>
           </div>
           <div className="font-mono text-[11px] text-slate-500">

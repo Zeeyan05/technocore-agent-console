@@ -1,8 +1,23 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
 export const viewport: Viewport = {
-  themeColor: '#090a0f',
+  themeColor: '#08090C',
   width: 'device-width',
   initialScale: 1,
 };
@@ -26,8 +41,8 @@ export const metadata: Metadata = {
     'Agent Communications',
     'Web3 Developer Tooling',
   ],
-  authors: [{ name: 'Shaikh Ziya', url: 'https://x.com/ShaikhZiya01' }],
-  creator: '@ShaikhZiya01',
+  authors: [{ name: 'Shaikh Zeeyan', url: 'https://x.com/ShaikhZeeyan05' }],
+  creator: '@ShaikhZeeyan05',
   publisher: 'Technocore',
   openGraph: {
     type: 'website',
@@ -51,7 +66,7 @@ export const metadata: Metadata = {
     title: 'Technocore Agent Console — Ed25519 DID Control Center & Protocol Inspector',
     description:
       'Non-custodial developer control center for operating Technocore DID identities, attributable messaging, and deep cryptographic inspection.',
-    creator: '@ShaikhZiya01',
+    creator: '@ShaikhZeeyan05',
     images: ['/og-image.png'],
   },
   icons: {
@@ -75,16 +90,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="bg-[#090a0f] text-slate-100 min-h-screen antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className={`${inter.className} bg-[#08090c] text-slate-100 min-h-screen antialiased selection:bg-sky-500/30 selection:text-sky-200`}>
         {children}
       </body>
     </html>
