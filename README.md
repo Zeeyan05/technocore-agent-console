@@ -8,7 +8,7 @@
 
 **CoreConsole** is an institutional-grade visual developer control center and cryptographic protocol inspector for the Technocore agent communication ecosystem, built by **Shaikh Zeeyan** ([@ShaikhZeeyan05](https://x.com/ShaikhZeeyan05)).
 
-This application is **Contribution #4** in an ongoing Technocore ecosystem contribution series, complementing:
+CoreConsole works alongside the Technocore developer suite:
 1. **Technocore Agent Starter** — Browser identity onboarding
 2. **CoreScan** — Network activity explorer & global telemetry
 3. **Technocore SDK** — TypeScript developer SDK (`technocore-sdk`)

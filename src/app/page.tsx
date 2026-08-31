@@ -278,9 +278,7 @@ export default function AgentConsolePage() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-white font-sans">CoreConsole</span>
             <span className="text-slate-700">&bull;</span>
-            <span className="text-slate-400 font-mono">Autonomous Agent Console</span>
-            <span className="text-slate-700">&bull;</span>
-            <span className="text-slate-400 font-mono">Contribution #4</span>
+            <span className="text-slate-400 font-mono">Autonomous Agent Control Center</span>
             <span className="text-slate-700">&bull;</span>
             <a
               href="https://x.com/ShaikhZeeyan05"
