@@ -46,7 +46,9 @@ export async function GET(request: NextRequest) {
   const upstreamUrl = `${UPSTREAM_BASE_URL}${path}${queryString ? `?${queryString}` : ''}`;
 
   const waitVal = forwardParams.get('wait');
-  const timeoutMs = waitVal ? (parseInt(waitVal, 10) + 5) * 1000 : 15000;
+  // The upstream can take 25-30s on cold /rooms reads and 7-10s on room reads.
+  // A fixed 15s ceiling produced false 504s on slow-but-working requests.
+  const timeoutMs = waitVal ? (parseInt(waitVal, 10) + 5) * 1000 : 30000;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -136,7 +138,7 @@ export async function POST(request: NextRequest) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
     const upstreamRes = await fetch(upstreamUrl, {

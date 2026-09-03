@@ -11,22 +11,39 @@ export function useTechnocore() {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [errorReason, setErrorReason] = useState<string | null>(null);
   const [rooms, setRooms] = useState<RoomInfo[]>([]);
+  const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState<boolean>(false);
 
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkConnection = useCallback(async () => {
     setIsChecking(true);
-    const start = performance.now();
     try {
-      const roomList = await client.listRooms();
-      const end = performance.now();
-
-      setRooms(roomList);
-      setLatencyMs(Math.round(end - start));
+      // Liveness is measured on /healthz (fast when warm ~0.2s). /rooms is
+      // intentionally NOT the probe: it can take 25-30s cold, which would
+      // false-fail the connection state.
+      const latency = await client.checkHealth();
+      setLatencyMs(latency);
       setConnectionState('connected');
       setErrorReason(null);
       setLastChecked(new Date());
+
+      // Best-effort room list refresh. A failure here must NOT flip the
+      // connection state — room listing slowness is not a connectivity fault.
+      try {
+        const roomList = await client.listRooms();
+        setRooms(roomList);
+      } catch {
+        // keep previously known rooms; rooms surface their own error state
+      }
+
+      // Best-effort real protocol version. Same rule: never affects liveness.
+      try {
+        const cfg = await client.readConfig();
+        if (cfg.version) setServerVersion(cfg.version);
+      } catch {
+        // leave null — the UI omits the version rather than guessing one
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setConnectionState('error');
@@ -59,6 +76,7 @@ export function useTechnocore() {
     lastChecked,
     errorReason,
     rooms,
+    serverVersion,
     isChecking,
     checkConnection,
   };

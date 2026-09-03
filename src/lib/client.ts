@@ -30,6 +30,43 @@ export class TechnocoreClient {
   }
 
   /**
+   * Liveness probe against the upstream /healthz endpoint.
+   * Returns round-trip latency in milliseconds.
+   * The upstream /rooms endpoint can take 25-30s when cold, so it must never
+   * be used as the connection probe — /healthz is fast when warm (~0.2s).
+   */
+  async checkHealth(): Promise<number> {
+    const url = `${this.proxyEndpoint}?path=${encodeURIComponent('/healthz')}`;
+    const start = performance.now();
+    const res = await fetch(url);
+    const latencyMs = Math.round(performance.now() - start);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Health check failed (${res.status}): ${errText}`);
+    }
+    return latencyMs;
+  }
+
+  /**
+   * Read the upstream service descriptor (/config).
+   * Used so the UI can display the REAL running protocol version instead of a
+   * hardcoded string that silently goes stale when upstream ships an update.
+   */
+  async readConfig(): Promise<{ service: string | null; version: string | null }> {
+    const url = `${this.proxyEndpoint}?path=${encodeURIComponent('/config')}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Failed to read config (${res.status}): ${errText}`);
+    }
+    const data = await res.json();
+    return {
+      service: typeof data?.service === 'string' ? data.service : null,
+      version: typeof data?.version === 'string' ? data.version : null,
+    };
+  }
+
+  /**
    * Fetch list of public active rooms.
    */
   async listRooms(): Promise<RoomInfo[]> {
