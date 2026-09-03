@@ -1,7 +1,8 @@
 /**
  * Local Storage Utilities
  *
- * Persists non-custodial local settings, saved contacts, and session state.
+ * The only two things this app persists: the non-custodial Ed25519 seed and the
+ * local contact book. Both stay on the device — nothing here is ever uploaded.
  */
 
 import type { AgentContact } from '@/types/technocore';
@@ -9,9 +10,6 @@ import type { AgentContact } from '@/types/technocore';
 const STORAGE_KEYS = {
   IDENTITY_SEED: 'technocore_agent_seed',
   CONTACTS: 'technocore_agent_contacts',
-  AUDIO_ENABLED: 'technocore_audio_enabled',
-  PINNED_ROOMS: 'technocore_pinned_rooms',
-  SELECTED_MAILBOX: 'technocore_selected_mailbox',
 };
 
 export function getStoredSeed(): string | null {
@@ -51,45 +49,6 @@ export function setStoredContacts(contacts: AgentContact[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(contacts));
-  } catch {
-    // ignore
-  }
-}
-
-export function getStoredAudioEnabled(): boolean {
-  if (typeof window === 'undefined') return true;
-  try {
-    const val = localStorage.getItem(STORAGE_KEYS.AUDIO_ENABLED);
-    return val === null ? true : val === 'true';
-  } catch {
-    return true;
-  }
-}
-
-export function setStoredAudioEnabled(enabled: boolean): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEYS.AUDIO_ENABLED, String(enabled));
-  } catch {
-    // ignore
-  }
-}
-
-export function getStoredPinnedRooms(): string[] {
-  if (typeof window === 'undefined') return ['lobby', 'sdk-test', 'events'];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.PINNED_ROOMS);
-    if (!raw) return ['lobby', 'sdk-test', 'events'];
-    return JSON.parse(raw);
-  } catch {
-    return ['lobby', 'sdk-test', 'events'];
-  }
-}
-
-export function setStoredPinnedRooms(rooms: string[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEYS.PINNED_ROOMS, JSON.stringify(rooms));
   } catch {
     // ignore
   }
