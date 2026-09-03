@@ -6,39 +6,20 @@ import { agentMailboxRoom } from '@/lib/crypto/fingerprint';
 import { isValidDid } from '@/lib/crypto/did';
 import type { AgentContact } from '@/types/technocore';
 
-const DEFAULT_SEED_CONTACTS: AgentContact[] = [
-  {
-    id: 'seed-agent-alpha',
-    nickname: 'Alpha Mesh Sentinel',
-    did: 'did:key:z6Mkw14GYYf2up8rho9TkgYVXQakxDEPjSaZPbJ65dY6FXKG',
-    notes: 'Technocore ecosystem verification relay node',
-    createdAt: Date.now() - 86400000 * 2,
-    lastInteractedAt: Date.now() - 3600000,
-    mailboxRoom: agentMailboxRoom('did:key:z6Mkw14GYYf2up8rho9TkgYVXQakxDEPjSaZPbJ65dY6FXKG'),
-  },
-  {
-    id: 'seed-agent-nexus',
-    nickname: 'Nexus Courier',
-    did: 'did:key:z6MkjTShwS5aM9F7mR4P9r8L1m3N6q5X8v2Z1c4V7b0A9s',
-    notes: 'Autonomous task coordinator and room bridge',
-    createdAt: Date.now() - 86400000,
-    lastInteractedAt: Date.now() - 7200000,
-    mailboxRoom: agentMailboxRoom('did:key:z6MkjTShwS5aM9F7mR4P9r8L1m3N6q5X8v2Z1c4V7b0A9s'),
-  },
-];
-
 export function useContacts() {
   const [contacts, setContacts] = useState<AgentContact[]>([]);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     const stored = getStoredContacts();
-    if (stored && stored.length > 0) {
-      setContacts(stored);
-    } else {
-      setContacts(DEFAULT_SEED_CONTACTS);
-      setStoredContacts(DEFAULT_SEED_CONTACTS);
+    // Validate every stored contact: contacts are user-created only. Any entry
+    // with an invalid DID (e.g. older fabricated demo data) is dropped rather
+    // than shown as a live agent.
+    const valid = (stored || []).filter((c) => c && isValidDid(c.did));
+    if (valid.length !== (stored || []).length) {
+      setStoredContacts(valid);
     }
+    setContacts(valid);
     setIsLoaded(true);
   }, []);
 
