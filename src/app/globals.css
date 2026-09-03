@@ -1,49 +1,60 @@
 @import "tailwindcss";
 
-:root {
-  /* Surface Tokens (Deep Carbon Zinc) */
-  --surface-0: #08090c;
-  --surface-1: #0d1016;
-  --surface-2: #121620;
-  --surface-3: #181e2b;
-  --surface-input: #0b0e14;
-  --surface-hover: #151a26;
-  --surface-active: #1e2535;
+@theme {
+  /* Surfaces — OLED near-black, flat. No glows, no gradients. */
+  --color-bg: #08090c; /* page */
+  --color-surface: #0f1117; /* card */
+  --color-surface-2: #141720; /* input / elevated */
+  --color-surface-3: #1b1f2b; /* active / hover */
 
-  /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.14);
-  --border-strong: rgba(255, 255, 255, 0.22);
-  --border-focus: rgba(56, 189, 248, 0.5);
+  /* Lines (borders) */
+  --color-line: #22262f;
+  --color-line-2: #2b303b;
+  --color-line-strong: #3a4150;
+  --color-line-accent: rgba(56, 189, 248, 0.55);
 
-  /* Web3 Accents */
-  --accent-cyan: #38bdf8;
-  --accent-cyan-tint: rgba(56, 189, 248, 0.1);
-  --accent-green: #10b981;
-  --accent-green-tint: rgba(16, 185, 129, 0.1);
-  --accent-amber: #f59e0b;
-  --accent-rose: #ef4444;
+  /* Ink (text) */
+  --color-ink: #e8eaf0; /* primary */
+  --color-ink-2: #9aa3b2; /* secondary */
+  --color-ink-3: #7a8194; /* muted */
+  --color-ink-4: #5a6170; /* faint */
 
-  /* Typography */
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --text-faint: #4b5563;
+  /* Accent — brand cyan, used flat */
+  --color-accent: #38bdf8;
+  --color-accent-tint: rgba(56, 189, 248, 0.1);
 
-  /* Fonts */
-  --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: var(--font-mono), 'JetBrains Mono', 'IBM Plex Mono', Menlo, Consolas, monospace;
+  /* Ink that sits on a saturated fill (accent / warning / danger buttons).
+     Kept as its own token because it must invert with the theme: near-black on
+     the light dark-mode fills, white on the darker light-mode fills. */
+  --color-on-accent: #08090c;
+
+  /* Semantics (lightened for dark-bg contrast) */
+  --color-success: #34d399;
+  --color-success-tint: rgba(52, 211, 153, 0.12);
+  --color-warning: #fbbf24;
+  --color-warning-tint: rgba(251, 191, 36, 0.12);
+  --color-danger: #f87171;
+  --color-danger-tint: rgba(248, 113, 113, 0.12);
+
+  /* Fonts (loaded via next/font in layout.tsx) */
+  --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: dark;
+}
 body {
-  background-color: var(--surface-0);
-  color: var(--text-primary);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   overflow-x: hidden;
   min-height: 100vh;
@@ -52,53 +63,45 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Monospace font utility for cryptographic tokens */
+/* Monospace utility for cryptographic tokens: tabular figures keep
+   nonces/seq/latency columns from shifting as values change. */
 .font-mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* Custom sleek dark scrollbars */
+/* Visible keyboard focus — 2px accent ring, offset. Declared unlayered so it
+   wins over Tailwind's layered `focus:outline-none` utilities on inputs.
+   Full-opacity accent gives 8.8:1 against the card surface (WCAG 1.4.11 needs 3:1). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Custom dark scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--surface-0);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
-}
-
-/* Institutional Card Panels */
-.web3-card {
-  background: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  transition: border-color 120ms ease, background-color 120ms ease;
-}
-
-.web3-card:hover {
-  border-color: var(--border-medium);
-}
-
-.web3-card-interactive:hover {
-  background: var(--surface-hover);
-  border-color: var(--border-medium);
+  background: rgba(255, 255, 255, 0.24);
 }
 
 /* Modal backdrop */
 .modal-backdrop {
-  background: rgba(4, 5, 8, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(4, 5, 8, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 /* Live status beacon (clean, subtle pulse) */
@@ -107,7 +110,7 @@ body {
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.35;
   }
   100% {
     opacity: 1;
@@ -115,5 +118,87 @@ body {
 }
 
 .live-dot {
-  animation: live-pulse 2s infinite ease-in-out;
+  animation: live-pulse 2.2s infinite ease-in-out;
+}
+
+/* Skeleton shimmer for loading states */
+@keyframes skeleton-pulse {
+  0% {
+    background-color: var(--color-surface-2);
+  }
+  50% {
+    background-color: var(--color-surface-3);
+  }
+  100% {
+    background-color: var(--color-surface-2);
+  }
+}
+
+.skeleton {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Light theme. Every component paints with the tokens above, so the whole app
+   re-themes by re-pointing those variables — no per-component light variants.
+   Declared unlayered so it wins over Tailwind's `@layer theme` defaults.
+
+   Saturated fills drop to the 700 range here so white ink clears 4.5:1 on them,
+   and the ink ramp is chosen for contrast on #ffffff cards: ink 18.6:1,
+   ink-2 8.6:1, ink-3 6.0:1, ink-4 4.8:1 — all measured in the browser.
+   --------------------------------------------------------------------------- */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg: #f6f7fa;
+    --color-surface: #ffffff;
+    --color-surface-2: #f1f3f7;
+    --color-surface-3: #e4e8ef;
+
+    --color-line: #dfe3ea;
+    --color-line-2: #ccd2dd;
+    --color-line-strong: #a8b0bf;
+    --color-line-accent: rgba(3, 105, 161, 0.5);
+
+    --color-ink: #10131a;
+    --color-ink-2: #454c5a;
+    --color-ink-3: #5c6472;
+    --color-ink-4: #6b7280;
+
+    --color-accent: #0369a1;
+    --color-accent-tint: rgba(3, 105, 161, 0.08);
+    --color-on-accent: #ffffff;
+
+    --color-success: #047857;
+    --color-success-tint: rgba(4, 120, 87, 0.1);
+    --color-warning: #854d0e;
+    --color-warning-tint: rgba(133, 77, 14, 0.1);
+    --color-danger: #b91c1c;
+    --color-danger-tint: rgba(185, 28, 28, 0.08);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(16, 19, 26, 0.2);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 19, 26, 0.32);
+  }
+
+  .modal-backdrop {
+    background: rgba(16, 19, 26, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .skeleton,
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
