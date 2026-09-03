@@ -40,8 +40,11 @@ export const Navigation: React.FC<NavigationProps> = ({
   ];
 
   return (
-    <nav className="w-full border-b border-white/[0.08] bg-[#08090c] sticky top-14 z-30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1.5 overflow-x-auto py-2">
+    <nav
+      className="w-full border-b border-line bg-bg sticky top-16 z-30"
+      aria-label="Console sections"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto py-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -50,24 +53,30 @@ export const Navigation: React.FC<NavigationProps> = ({
             <button
               key={item.id}
               onClick={() => onSelectTab(item.id)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap border ${
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 isActive
-                  ? 'bg-[#181e2b] text-white border-white/[0.14]'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] border-transparent'
+                  ? 'bg-surface-2 text-ink'
+                  : 'text-ink-3 hover:text-ink hover:bg-surface'
               }`}
             >
               <Icon
                 className={`w-3.5 h-3.5 ${
-                  isActive ? 'text-sky-400' : 'text-slate-500'
+                  isActive ? 'text-accent' : 'text-ink-4'
                 }`}
               />
               <span>{item.label}</span>
               {item.badge !== undefined && item.badge > 0 && (
                 <span
-                  className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold ${
+                  aria-label={
+                    item.id === 'inbox'
+                      ? `${item.badge} unread`
+                      : `${item.badge} saved`
+                  }
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${
                     isActive
-                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                      : 'bg-white/[0.06] text-slate-400'
+                      ? 'bg-accent-tint text-accent'
+                      : 'bg-surface-3 text-ink-3'
                   }`}
                 >
                   {item.badge}

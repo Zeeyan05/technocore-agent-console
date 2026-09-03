@@ -12,8 +12,8 @@ interface VerificationSealProps {
 export const VerificationSeal: React.FC<VerificationSealProps> = ({ verification, isDidSender }) => {
   if (!isDidSender) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-white/[0.04] text-slate-400 border border-white/[0.08]" title="Self-asserted nickname (unauthenticated lane)">
-        <Globe className="w-3 h-3 text-slate-500" />
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-surface-2 text-ink-3 border border-line" title="Self-asserted nickname (unauthenticated lane)">
+        <Globe className="w-3 h-3 text-ink-4" />
         <span>Nick</span>
       </span>
     );
@@ -21,7 +21,7 @@ export const VerificationSeal: React.FC<VerificationSealProps> = ({ verification
 
   if (!verification) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-white/[0.04] text-slate-400 border border-white/[0.08]">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-surface-2 text-ink-3 border border-line">
         <span>Checking</span>
       </span>
     );
@@ -29,8 +29,8 @@ export const VerificationSeal: React.FC<VerificationSealProps> = ({ verification
 
   if (verification.valid) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-950/60 text-emerald-300 border border-emerald-500/30" title="Cryptographically valid Ed25519 signature verified offline">
-        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-success-tint text-success border border-success/30" title="Cryptographically valid Ed25519 signature verified offline">
+        <ShieldCheck className="w-3 h-3 text-success" />
         <span>Ed25519</span>
       </span>
     );
@@ -38,16 +38,16 @@ export const VerificationSeal: React.FC<VerificationSealProps> = ({ verification
 
   if (verification.signatureFormatValid && !verification.signatureValid) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-rose-950/60 text-rose-300 border border-rose-500/40" title="Signature failed cryptographic verification against payload">
-        <ShieldX className="w-3 h-3 text-rose-400" />
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-danger-tint text-danger border border-danger/30" title="Signature failed cryptographic verification against payload">
+        <ShieldX className="w-3 h-3 text-danger" />
         <span>Invalid Sig</span>
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-950/50 text-amber-300 border border-amber-500/30" title={verification.error || 'Unverified'}>
-      <ShieldAlert className="w-3 h-3 text-amber-400" />
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-warning-tint text-warning border border-warning/30" title={verification.error || 'Unverified'}>
+      <ShieldAlert className="w-3 h-3 text-warning" />
       <span>Unsigned</span>
     </span>
   );
@@ -55,7 +55,7 @@ export const VerificationSeal: React.FC<VerificationSealProps> = ({ verification
 
 export const SequenceBadge: React.FC<{ seq: number }> = ({ seq }) => {
   return (
-    <span className="font-mono text-[10px] text-slate-400 bg-[#121620] border border-white/[0.06] px-1.5 py-0.5 rounded">
+    <span className="font-mono text-[10px] text-ink-4 bg-surface-2 border border-line px-1.5 py-0.5 rounded">
       #{String(seq).padStart(5, '0')}
     </span>
   );
@@ -65,29 +65,29 @@ export const ConnectionDot: React.FC<{ state: ConnectionState }> = ({ state }) =
   switch (state) {
     case 'connected':
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs text-slate-200 font-mono">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 live-dot" />
+        <span className="inline-flex items-center gap-1.5 text-xs text-ink font-mono">
+          <span className="w-2 h-2 rounded-full bg-success live-dot" />
           <span>Live</span>
         </span>
       );
     case 'reconnecting':
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs text-amber-400 font-mono">
-          <span className="w-2 h-2 rounded-full bg-amber-500 live-dot" />
+        <span className="inline-flex items-center gap-1.5 text-xs text-warning font-mono">
+          <span className="w-2 h-2 rounded-full bg-warning live-dot" />
           <span>Reconnecting</span>
         </span>
       );
     case 'error':
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs text-rose-400 font-mono">
-          <span className="w-2 h-2 rounded-full bg-rose-500" />
+        <span className="inline-flex items-center gap-1.5 text-xs text-danger font-mono">
+          <span className="w-2 h-2 rounded-full bg-danger" />
           <span>Offline</span>
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-          <span className="w-2 h-2 rounded-full bg-slate-500" />
+        <span className="inline-flex items-center gap-1.5 text-xs text-ink-4 font-mono">
+          <span className="w-2 h-2 rounded-full bg-ink-4" />
           <span>Disconnected</span>
         </span>
       );

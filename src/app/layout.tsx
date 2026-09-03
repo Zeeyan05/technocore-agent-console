@@ -12,7 +12,7 @@ const inter = Inter({
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-mono',
+  variable: '--font-jetbrains-mono',
   display: 'swap',
 });
 
@@ -94,7 +94,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className={`${inter.className} bg-[#08090c] text-slate-100 min-h-screen antialiased selection:bg-sky-500/30 selection:text-sky-200`}>
+      <body className={`${inter.className} bg-bg text-ink min-h-screen antialiased selection:bg-accent/30 selection:text-ink`}>
         {children}
       </body>
     </html>

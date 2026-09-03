@@ -5,6 +5,7 @@ import { X, Send, ShieldCheck, AlertCircle, CheckCircle2, Users, Loader2 } from 
 import { sweep } from '@/lib/crypto/sweep';
 import { isValidDid } from '@/lib/crypto/did';
 import { agentMailboxRoom } from '@/lib/crypto/fingerprint';
+import { useModalA11y } from '@/hooks/useModalA11y';
 import { MAX_MESSAGE_CHARS } from '@/types/technocore';
 import type { Identity } from '@/lib/identity';
 import type { TechnocoreClient } from '@/lib/client';
@@ -19,7 +20,6 @@ interface ComposeModalProps {
   defaultRecipient?: string;
   defaultRoom?: string;
   onSuccess: (room: string) => void;
-  onPlaySendAudio?: () => void;
 }
 
 export const ComposeModal: React.FC<ComposeModalProps> = ({
@@ -31,7 +31,6 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   defaultRecipient = '',
   defaultRoom = '',
   onSuccess,
-  onPlaySendAudio,
 }) => {
   const [recipientDid, setRecipientDid] = useState<string>(defaultRecipient.startsWith('did:key:') ? defaultRecipient : '');
   const [targetRoom, setTargetRoom] = useState<string>(() => {
@@ -70,6 +69,10 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
 
   const sweptText = useMemo(() => sweep(text), [text]);
 
+  // Escape must not abandon the dialog while a signature is being broadcast.
+  const isBusy = status === 'signing' || status === 'sending';
+  const panelRef = useModalA11y(isOpen, onClose, { lockClose: isBusy });
+
   const effectiveRoom = useMemo(() => {
     const cleanRoom = targetRoom.trim();
     if (cleanRoom) return cleanRoom;
@@ -87,7 +90,17 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     } else if (isValidDid(contactDid)) {
       setTargetRoom(agentMailboxRoom(contactDid));
     }
+    clearError();
   };
+
+  // A failed attempt should not keep showing its error while the user edits the
+  // form to fix it — clear as soon as any field changes.
+  function clearError() {
+    if (errorMessage !== null || status === 'error') {
+      setErrorMessage(null);
+      setStatus('idle');
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -118,14 +131,11 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       setStatus('signing');
       setErrorMessage(null);
 
-      // Brief visual transition for signing phase
-      await new Promise((r) => setTimeout(r, 150));
-
+      // Real Ed25519 signing happens inside sendSignedMessage — no artificial delay.
       setStatus('sending');
       await client.sendSignedMessage(effectiveRoom, identity, sweptText);
 
       setStatus('success');
-      if (onPlaySendAudio) onPlaySendAudio();
 
       setTimeout(() => {
         onSuccess(effectiveRoom);
@@ -141,23 +151,31 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-150">
-      <div className="relative w-full max-w-xl bg-[#0e1017] border border-slate-700/70 rounded-xl shadow-2xl overflow-hidden flex flex-col">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="compose-title"
+        className="relative w-full max-w-xl bg-surface border border-line-2 rounded-lg overflow-hidden flex flex-col"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#121520]/80">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-surface-2/50">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-400">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
+            <ShieldCheck className="w-5 h-5 text-accent" />
             <div>
-              <h2 className="text-base font-semibold text-slate-100 tracking-wide">Compose Signed Message</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Authenticates with Ed25519 signature & monotonic nonce
+              <h2 id="compose-title" className="text-base font-semibold text-ink">
+                Compose Signed Message
+              </h2>
+              <p className="text-xs text-ink-3 mt-0.5">
+                Authenticates with Ed25519 signature &amp; monotonic nonce
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            disabled={isBusy}
+            className="p-1.5 rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-40"
+            aria-label="Close compose"
           >
             <X className="w-5 h-5" />
           </button>
@@ -166,14 +184,14 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSend} className="p-6 space-y-5">
           {/* Sender Identity Preview */}
-          <div className="p-3 rounded-lg bg-black/40 border border-slate-800 flex items-center justify-between">
+          <div className="p-3 rounded-md bg-bg/40 border border-line flex items-center justify-between">
             <div className="space-y-0.5">
-              <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Signing As</span>
-              <div className="font-mono text-xs text-cyan-300 truncate max-w-sm">
+              <span className="text-[11px] font-medium text-ink-3 uppercase tracking-wider">Signing As</span>
+              <div className="font-mono text-xs text-accent truncate max-w-sm">
                 {identity?.did || 'No Identity Loaded'}
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-500/30">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-success-tint text-success border border-success/30">
               Ed25519
             </span>
           </div>
@@ -181,16 +199,16 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           {/* Recipient DID (Optional / Contact lookup) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-300">Recipient DID (Optional Attribution)</label>
+              <label className="text-xs font-medium text-ink-2">Recipient DID (Optional Attribution)</label>
               {contacts.length > 0 && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                <div className="flex items-center gap-1 text-[11px] text-ink-3">
                   <Users className="w-3 h-3" />
                   <span>Quick Pick:</span>
                   <select
                     onChange={(e) => {
                       if (e.target.value) handleContactSelect(e.target.value);
                     }}
-                    className="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-cyan-300 font-mono"
+                    className="bg-surface-2 border border-line rounded px-1.5 py-0.5 text-xs text-accent font-mono"
                     defaultValue=""
                   >
                     <option value="" disabled>Saved Contacts</option>
@@ -212,29 +230,33 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
                 if (val.startsWith('did:key:') && isValidDid(val.trim())) {
                   setTargetRoom(agentMailboxRoom(val.trim()));
                 }
+                clearError();
               }}
               placeholder="did:key:z6Mk... (optional peer agent identity)"
-              className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-cyan-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-accent placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
             />
           </div>
 
           {/* Target Channel / Room (Authoritative Network Destination) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-300">Target Mailbox / Channel Room</label>
-              <span className="text-[10px] text-slate-500 font-mono">First-come destination</span>
+              <label className="text-xs font-medium text-ink-2">Target Mailbox / Channel Room</label>
+              <span className="text-[10px] text-ink-4 font-mono">First-come destination</span>
             </div>
             <input
               type="text"
               value={targetRoom}
-              onChange={(e) => setTargetRoom(e.target.value)}
+              onChange={(e) => {
+                setTargetRoom(e.target.value);
+                clearError();
+              }}
               placeholder="e.g. mb-e3b0c44298fc1c14, lobby, sdk-test, d-myroom"
               required
-              className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-emerald-400 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-success placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
             />
             {recipientDid.startsWith('did:key:') && (
-              <p className="text-[11px] text-slate-400 font-mono">
-                Note: Room names are not cryptographically bound to DIDs. <span className="text-slate-200">mb-&lt;fingerprint&gt;</span> is an application convention you can override above.
+              <p className="text-[11px] text-ink-3 font-mono">
+                Note: Room names are not cryptographically bound to DIDs. <span className="text-ink">mb-&lt;fingerprint&gt;</span> is an application convention you can override above.
               </p>
             )}
           </div>
@@ -242,27 +264,30 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           {/* Message Body */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-300">Message Text</label>
-              <span className={`text-[11px] font-mono ${text.length > MAX_MESSAGE_CHARS ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>
+              <label className="text-xs font-medium text-ink-2">Message Text</label>
+              <span className={`text-[11px] font-mono ${text.length > MAX_MESSAGE_CHARS ? 'text-danger font-bold' : 'text-ink-3'}`}>
                 {text.length} / {MAX_MESSAGE_CHARS}
               </span>
             </div>
             <textarea
               rows={4}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                clearError();
+              }}
               placeholder="Type your message... (Single-line sweep will automatically clean whitespace before signing)"
-              className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-slate-700 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 transition-colors resize-none"
+              className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-ink placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors resize-none"
             />
           </div>
 
           {/* Real-time Canonical Payload Preview */}
           {sweptText && (
-            <div className="p-3 bg-black/40 rounded-lg border border-slate-800 space-y-1.5">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="p-3 bg-bg/40 rounded-md border border-line space-y-1.5">
+              <span className="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">
                 Preview Canonical Signing Payload
               </span>
-              <div className="font-mono text-[11px] text-cyan-300/90 break-all">
+              <div className="font-mono text-[11px] text-accent break-all">
                 {effectiveRoom}|&lt;auto-nonce&gt;|{sweptText}
               </div>
             </div>
@@ -270,16 +295,16 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
 
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-md bg-danger-tint border border-danger/40 text-danger text-xs flex items-start gap-2" role="alert">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {/* Success Banner */}
           {status === 'success' && (
-            <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="p-3 rounded-md bg-success-tint border border-success/40 text-success text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>Message signed and broadcast successfully!</span>
             </div>
           )}
@@ -289,15 +314,15 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              disabled={status === 'signing' || status === 'sending'}
-              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition-colors disabled:opacity-50"
+              disabled={isBusy}
+              className="px-4 py-2 rounded-md bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!text.trim() || status === 'signing' || status === 'sending'}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-semibold text-white shadow-lg shadow-cyan-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!text.trim() || isBusy}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-md bg-accent text-on-accent text-xs font-bold transition-colors hover:bg-accent/85 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {status === 'signing' ? (
                 <>
@@ -311,13 +336,13 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
                 </>
               ) : status === 'success' ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Sent ✓</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Sent</span>
                 </>
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>Sign & Send Message</span>
+                  <span>Sign &amp; Send Message</span>
                 </>
               )}
             </button>

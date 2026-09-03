@@ -3,13 +3,10 @@
 import React from 'react';
 import {
   Send,
-  Volume2,
-  VolumeX,
   Copy,
   Check,
   SearchCode,
   RefreshCw,
-  ExternalLink,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { Identicon } from './Identicon';
@@ -22,137 +19,119 @@ interface HeaderProps {
   identity: Identity | null;
   connectionState: ConnectionState;
   latencyMs: number | null;
-  audioEnabled: boolean;
-  onToggleAudio: () => void;
   onOpenCompose: () => void;
   onOpenVerifier: () => void;
   onRefreshConnection: () => void;
   isChecking: boolean;
   onCopyDid: (did: string) => void;
   didCopied: boolean;
+  serverVersion: string | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   identity,
   connectionState,
   latencyMs,
-  audioEnabled,
-  onToggleAudio,
   onOpenCompose,
   onOpenVerifier,
   onRefreshConnection,
   isChecking,
   onCopyDid,
   didCopied,
+  serverVersion,
 }) => {
   const currentDid = identity?.did || '';
 
   const latencyColor =
     latencyMs === null
-      ? 'text-slate-500'
+      ? 'text-ink-3'
       : latencyMs < 150
-      ? 'text-emerald-400'
+      ? 'text-success'
       : latencyMs < 350
-      ? 'text-amber-400'
-      : 'text-rose-400';
+      ? 'text-warning'
+      : 'text-danger';
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#07080c]/95 backdrop-blur-xl transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Brand & Subtitle with Author Credit */}
-        <div className="flex items-center gap-3.5">
-          <BrandLogo size={40} />
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-extrabold tracking-tight text-white font-sans">
-                CORE<span className="text-cyan-400">CONSOLE</span>
-              </span>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#121620] text-cyan-300 border border-cyan-500/30 uppercase tracking-wider">
-                Technocore Agent v1.0
-              </span>
-              <a
-                href="https://x.com/ShaikhZeeyan05"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-[10px] font-mono text-slate-400 hover:text-cyan-300 border border-white/[0.08] transition-all"
-                title="Built by @ShaikhZeeyan05 on X"
-              >
-                <span>by @ShaikhZeeyan05</span>
-                <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-              </a>
-            </div>
-            <p className="text-[11px] text-slate-400 font-mono hidden sm:block mt-0.5">
-              Autonomous Agent Control Center &bull; Mailbox Operator &bull; Protocol Inspector
-            </p>
+    <header className="sticky top-0 z-40 w-full border-b border-line bg-bg/95 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+        {/* Brand — logo mark alone on phones, wordmark from sm, version tag from lg */}
+        <div className="flex items-center gap-3 min-w-0">
+          <BrandLogo size={38} />
+          <div className="hidden sm:flex items-center gap-2.5 min-w-0">
+            <span className="text-base font-extrabold tracking-tight text-ink font-sans">
+              CORE<span className="text-accent">CONSOLE</span>
+            </span>
+            <span
+              className="hidden lg:inline-flex text-[10px] font-mono font-medium px-2 py-1 rounded bg-surface-2 text-ink-3 border border-line whitespace-nowrap"
+              title={
+                serverVersion
+                  ? 'Live version reported by the upstream /config endpoint'
+                  : 'Upstream version not yet read'
+              }
+            >
+              Technocore{serverVersion ? ` v${serverVersion}` : ''} &bull; Ed25519 &bull; did:key
+            </span>
           </div>
         </div>
 
         {/* Right Section: Telemetry & Controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Connection Status Indicator */}
-          <div
+          <button
+            type="button"
             onClick={onRefreshConnection}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0e111a] border border-white/[0.08] text-xs cursor-pointer hover:border-white/[0.18] hover:bg-[#131724] transition-all group"
+            className="flex items-center gap-2 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-surface border border-line text-xs cursor-pointer hover:border-line-2 hover:bg-surface-2 transition-colors shrink-0"
             title="Click to recheck network latency to technocore.chat"
           >
             <ConnectionDot state={connectionState} />
             {latencyMs !== null && (
-              <span className={`text-[11px] font-mono font-medium border-l border-white/[0.08] pl-2 ${latencyColor}`}>
+              <span className={`text-[11px] font-mono font-medium border-l border-line pl-2 ${latencyColor}`}>
                 {latencyMs}ms
               </span>
             )}
-            <RefreshCw className={`w-3 h-3 text-slate-500 group-hover:text-cyan-400 transition-colors ${isChecking ? 'animate-spin text-cyan-400' : ''}`} />
-          </div>
+            <RefreshCw
+              className={`w-3 h-3 text-ink-3 transition-colors ${isChecking ? 'animate-spin text-accent' : ''}`}
+            />
+          </button>
 
           {/* Standalone Verifier Shortcut */}
           <button
             onClick={onOpenVerifier}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0e111a] hover:bg-[#131724] border border-purple-500/25 hover:border-purple-500/50 text-xs font-semibold text-purple-300 transition-all shadow-[0_0_12px_rgba(168,85,247,0.1)]"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface hover:bg-surface-2 border border-line text-xs font-medium text-ink-2 hover:text-ink transition-colors"
             title="Open Standalone Protocol Verifier"
           >
-            <SearchCode className="w-3.5 h-3.5 text-purple-400" />
+            <SearchCode className="w-3.5 h-3.5 text-ink-3" />
             <span>Verifier</span>
-          </button>
-
-          {/* Sound FX Toggle */}
-          <button
-            onClick={onToggleAudio}
-            className={`p-2 rounded-lg border transition-all ${
-              audioEnabled
-                ? 'bg-cyan-950/40 border-cyan-500/30 text-cyan-400 hover:bg-cyan-900/40 shadow-[0_0_10px_rgba(0,242,254,0.15)]'
-                : 'bg-[#0e111a] border-white/[0.08] text-slate-500 hover:text-slate-300'
-            }`}
-            title={audioEnabled ? 'Sound FX Enabled (Mechanical Audio)' : 'Sound FX Muted'}
-          >
-            {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
           {/* Active Identity Pill */}
           {currentDid && (
             <button
               onClick={() => onCopyDid(currentDid)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0e111a] border border-white/[0.08] hover:border-cyan-500/50 hover:bg-[#131724] transition-all group shadow-sm"
+              className="flex items-center gap-2 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-surface border border-line hover:border-line-2 hover:bg-surface-2 transition-colors shrink-0"
               title={`Click to copy full DID: ${currentDid}`}
+              aria-label={`Copy full DID ${currentDid}`}
             >
               <Identicon did={currentDid} size={20} />
-              <span className="font-mono text-xs text-slate-300 group-hover:text-cyan-300 transition-colors">
+              <span className="hidden sm:inline font-mono text-xs text-ink-2 transition-colors">
                 {formatDidAbbreviated(currentDid)}
               </span>
               {didCopied ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" />
               ) : (
-                <Copy className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 shrink-0 transition-colors" />
+                <Copy className="w-3.5 h-3.5 text-ink-3 shrink-0" />
               )}
             </button>
           )}
 
-          {/* Compose Message Button */}
+          {/* Compose Message Button — flat accent, the single primary CTA */}
           <button
             onClick={onOpenCompose}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-xs font-bold text-white shadow-[0_0_15px_rgba(0,242,254,0.25)] transition-all hover:scale-105 active:scale-95"
+            aria-label="Compose signed message"
+            className="inline-flex items-center justify-center gap-2 p-3 sm:px-3.5 sm:py-2 min-h-11 sm:min-h-0 rounded-md bg-accent text-on-accent text-xs font-bold transition-colors hover:bg-accent/85 active:bg-accent/75 shrink-0"
           >
             <Send className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline tracking-wide">Compose Message</span>
+            <span className="hidden md:inline tracking-wide">Compose Message</span>
           </button>
         </div>
       </div>

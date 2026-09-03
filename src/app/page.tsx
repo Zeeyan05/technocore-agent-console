@@ -13,12 +13,13 @@ import { ComposeModal } from '@/components/ComposeModal';
 import { StandaloneVerifierModal } from '@/components/StandaloneVerifierModal';
 import { ExportSeedModal } from '@/components/ExportSeedModal';
 import { ToastContainer, ToastMessage } from '@/components/Toast';
+import { ConnectionErrorBanner } from '@/components/ConnectionErrorBanner';
 
 import { useIdentity } from '@/hooks/useIdentity';
 import { useTechnocore } from '@/hooks/useTechnocore';
 import { useMailbox, VerifiedMessage } from '@/hooks/useMailbox';
 import { useContacts } from '@/hooks/useContacts';
-import { useAudio } from '@/hooks/useAudio';
+import { copyText } from '@/lib/clipboard';
 
 export default function AgentConsolePage() {
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
@@ -40,6 +41,7 @@ export default function AgentConsolePage() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [didCopied, setDidCopied] = useState<boolean>(false);
+  const [errorBannerDismissed, setErrorBannerDismissed] = useState<boolean>(false);
 
   // Hooks
   const { identity, isLoading: isIdentityLoading, generateNew, importIdentity } = useIdentity();
@@ -47,7 +49,9 @@ export default function AgentConsolePage() {
     client,
     connectionState,
     latencyMs,
+    errorReason,
     rooms,
+    serverVersion,
     isChecking,
     checkConnection,
   } = useTechnocore();
@@ -56,6 +60,7 @@ export default function AgentConsolePage() {
     activeRoom,
     messages,
     isLoading: isMailboxLoading,
+    error: mailboxError,
     unreadCount,
     markAsRead,
     markAllAsRead,
@@ -66,16 +71,6 @@ export default function AgentConsolePage() {
     addContact,
     deleteContact,
   } = useContacts();
-
-  const {
-    enabled: audioEnabled,
-    toggle: toggleAudio,
-    playClick,
-    playSend,
-    playReceive,
-    playVerifySuccess,
-    playVerifyFail,
-  } = useAudio();
 
   // Toast Helper
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -90,30 +85,45 @@ export default function AgentConsolePage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Copy helper
-  const handleCopyText = useCallback((text: string, label: string) => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      playClick();
-      setCopiedKey(label);
-      showToast(`Copied ${label} to clipboard`, 'success');
-      setTimeout(() => setCopiedKey(null), 2000);
+  // Re-arm the banner when a new connection failure happens
+  React.useEffect(() => {
+    if (connectionState === 'connected') {
+      setErrorBannerDismissed(false);
     }
-  }, [playClick, showToast]);
+  }, [connectionState]);
 
-  const handleCopyDid = useCallback((did: string) => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(did);
-      playClick();
-      setDidCopied(true);
-      showToast('Copied full DID to clipboard', 'success');
-      setTimeout(() => setDidCopied(false), 2000);
-    }
-  }, [playClick, showToast]);
+  // Copy helper — never claims success unless the write actually landed.
+  const handleCopyText = useCallback(
+    async (text: string, label: string): Promise<boolean> => {
+      const { ok, reason } = await copyText(text);
+      if (ok) {
+        setCopiedKey(label);
+        showToast(`Copied ${label} to clipboard`, 'success');
+        setTimeout(() => setCopiedKey(null), 2000);
+      } else {
+        showToast(`Could not copy ${label}: ${reason ?? 'clipboard blocked'}`, 'error');
+      }
+      return ok;
+    },
+    [showToast]
+  );
+
+  const handleCopyDid = useCallback(
+    async (did: string) => {
+      const { ok, reason } = await copyText(did);
+      if (ok) {
+        setDidCopied(true);
+        showToast('Copied full DID to clipboard', 'success');
+        setTimeout(() => setDidCopied(false), 2000);
+      } else {
+        showToast(`Could not copy DID: ${reason ?? 'clipboard blocked'}`, 'error');
+      }
+    },
+    [showToast]
+  );
 
   // Open Compose Modal with optional pre-fill
   const handleOpenCompose = useCallback((recipientOrRoom?: string) => {
-    playClick();
     if (recipientOrRoom) {
       if (recipientOrRoom.startsWith('did:key:')) {
         setComposeRecipient(recipientOrRoom);
@@ -127,51 +137,53 @@ export default function AgentConsolePage() {
       setComposeRoom('');
     }
     setIsComposeOpen(true);
-  }, [playClick]);
+  }, []);
 
   // Open Protocol Inspector Modal
   const handleInspectMessage = useCallback((msg: VerifiedMessage, room: string) => {
-    playClick();
     setInspectedMessage(msg);
     setInspectedRoom(room);
     setIsInspectorOpen(true);
-    if (msg.verification?.valid) {
-      playVerifySuccess();
-    }
-  }, [playClick, playVerifySuccess]);
+  }, []);
 
   // Tab Selection
   const handleSelectTab = useCallback((tab: NavTab) => {
-    playClick();
     if (tab === 'verifier') {
       setIsVerifierOpen(true);
     } else {
       setActiveTab(tab);
     }
-  }, [playClick]);
+  }, []);
+
+  const showConnectionBanner =
+    connectionState === 'error' && errorReason && !errorBannerDismissed;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090a0f] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="min-h-screen flex flex-col bg-bg text-ink selection:bg-accent/30 selection:text-ink">
       {/* Header */}
       <Header
         identity={identity}
         connectionState={connectionState}
         latencyMs={latencyMs}
-        audioEnabled={audioEnabled}
-        onToggleAudio={toggleAudio}
         onOpenCompose={() => handleOpenCompose()}
-        onOpenVerifier={() => {
-          playClick();
-          setIsVerifierOpen(true);
-        }}
-        onRefreshConnection={() => {
-          playClick();
-          checkConnection();
-        }}
+        onOpenVerifier={() => setIsVerifierOpen(true)}
+        onRefreshConnection={() => checkConnection()}
         isChecking={isChecking}
         onCopyDid={handleCopyDid}
         didCopied={didCopied}
+        serverVersion={serverVersion}
       />
+
+      {/* Spec-required connection error banner: reason + retry */}
+      {showConnectionBanner && (
+        <ConnectionErrorBanner
+          reason={errorReason}
+          onRetry={() => {
+            checkConnection();
+          }}
+          onDismiss={() => setErrorBannerDismissed(true)}
+        />
+      )}
 
       {/* Navigation */}
       <Navigation
@@ -189,6 +201,7 @@ export default function AgentConsolePage() {
             unreadCount={unreadCount}
             recentMessages={messages}
             rooms={rooms}
+            contactsCount={contacts.length}
             onNavigate={handleSelectTab}
             onOpenCompose={handleOpenCompose}
             onInspectMessage={handleInspectMessage}
@@ -204,6 +217,7 @@ export default function AgentConsolePage() {
             identity={identity}
             contacts={contacts}
             isLoading={isMailboxLoading}
+            error={mailboxError}
             onMarkAsRead={markAsRead}
             onMarkAllAsRead={markAllAsRead}
             onInspectMessage={handleInspectMessage}
@@ -252,6 +266,7 @@ export default function AgentConsolePage() {
         {activeTab === 'identity' && (
           <IdentityTab
             identity={identity}
+            isLoading={isIdentityLoading}
             onGenerateNew={async () => {
               const id = await generateNew();
               showToast('Generated fresh Ed25519 identity', 'success');
@@ -262,10 +277,7 @@ export default function AgentConsolePage() {
               showToast('Imported and verified identity', 'success');
               return id;
             }}
-            onOpenExportModal={() => {
-              playClick();
-              setIsExportSeedOpen(true);
-            }}
+            onOpenExportModal={() => setIsExportSeedOpen(true)}
             onCopyText={handleCopyText}
             copiedKey={copiedKey}
           />
@@ -273,24 +285,21 @@ export default function AgentConsolePage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-white/[0.08] py-5 bg-[#07080c] text-xs text-slate-500">
+      <footer className="w-full border-t border-line py-5 bg-bg text-xs text-ink-3">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-white font-sans">CoreConsole</span>
-            <span className="text-slate-700">&bull;</span>
-            <span className="text-slate-400 font-mono">Autonomous Agent Control Center</span>
-            <span className="text-slate-700">&bull;</span>
-            <a
+          <div className="text-ink-3">
+            © Shaikh Zeeyan (<a
               href="https://x.com/ShaikhZeeyan05"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sky-400 hover:text-sky-300 font-mono inline-flex items-center gap-1 transition-colors"
+              className="text-ink-2 hover:text-accent transition-colors"
             >
-              <span>Crafted by @ShaikhZeeyan05</span>
-            </a>
+              @ShaikhZeeyan05
+            </a>)
           </div>
-          <div className="font-mono text-[11px] text-slate-500">
-            Target: technocore.chat &bull; Protocol v0.11.1 &bull; Ed25519 did:key
+          <div className="font-mono text-[11px] text-ink-4">
+            Target: technocore.chat &bull; Protocol{' '}
+            {serverVersion ? `v${serverVersion}` : 'version unavailable'} &bull; Ed25519 did:key
           </div>
         </div>
       </footer>
@@ -302,6 +311,7 @@ export default function AgentConsolePage() {
         isOpen={isInspectorOpen}
         onClose={() => setIsInspectorOpen(false)}
         onCopyText={handleCopyText}
+        serverVersion={serverVersion}
       />
 
       <ComposeModal
@@ -315,14 +325,11 @@ export default function AgentConsolePage() {
         onSuccess={(targetRoom) => {
           showToast(`Message broadcast to #${targetRoom}`, 'success');
         }}
-        onPlaySendAudio={playSend}
       />
 
       <StandaloneVerifierModal
         isOpen={isVerifierOpen}
         onClose={() => setIsVerifierOpen(false)}
-        onPlaySuccessAudio={playVerifySuccess}
-        onPlayFailAudio={playVerifyFail}
       />
 
       <ExportSeedModal

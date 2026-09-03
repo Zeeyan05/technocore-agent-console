@@ -22,7 +22,6 @@ export const Identicon: React.FC<IdenticonProps> = ({ did, size = 28, className 
     const color2 = `hsl(${hue2}, 85%, 45%)`;
     const angle = Math.abs(hash >> 4) % 360;
 
-    // Deterministic geometric shapes inside
     const p1 = (Math.abs(hash >> 2) % 40) + 10;
     const p2 = (Math.abs(hash >> 6) % 40) + 10;
     const p3 = (Math.abs(hash >> 8) % 40) + 10;
@@ -32,7 +31,7 @@ export const Identicon: React.FC<IdenticonProps> = ({ did, size = 28, className 
 
   return (
     <div
-      className={`inline-flex items-center justify-center shrink-0 rounded-full overflow-hidden border border-slate-700/60 shadow-sm ${className}`}
+      className={`inline-flex items-center justify-center shrink-0 rounded-full overflow-hidden border border-line ${className}`}
       style={{ width: size, height: size }}
       title={did}
     >

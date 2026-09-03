@@ -14,7 +14,7 @@ export function BrandLogo({ size = 38, className = '' }: BrandLogoProps) {
   if (imgError) {
     return (
       <div
-        className={`relative flex items-center justify-center rounded-lg bg-[#0e111a] border border-cyan-500/30 text-cyan-400 shrink-0 ${className}`}
+        className={`relative flex items-center justify-center rounded-lg bg-surface border border-line text-accent shrink-0 ${className}`}
         style={{ width: size, height: size }}
       >
         <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -27,7 +27,7 @@ export function BrandLogo({ size = 38, className = '' }: BrandLogoProps) {
 
   return (
     <div
-      className={`relative rounded-lg overflow-hidden border border-cyan-500/40 shadow-[0_0_12px_rgba(0,242,254,0.25)] flex items-center justify-center bg-[#07080c] shrink-0 transition-transform hover:scale-105 ${className}`}
+      className={`relative rounded-lg overflow-hidden border border-line flex items-center justify-center bg-bg shrink-0 ${className}`}
       style={{
         width: size,
         height: size,
@@ -37,7 +37,7 @@ export function BrandLogo({ size = 38, className = '' }: BrandLogoProps) {
     >
       <Image
         src="/brand-logo.png"
-        alt="Technocore Logo"
+        alt="CoreConsole Logo"
         width={size}
         height={size}
         className="object-cover w-full h-full"
