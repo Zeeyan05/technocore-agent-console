@@ -85,9 +85,18 @@ real design-token system with light + dark themes.
 * Vercel is linked via the **CLI** (`.vercel/project.json`, gitignored), not a Git integration. A
   push to GitHub will **not** auto-deploy until the repo is connected in the Vercel dashboard.
 
-### 🔄 In progress / next
+### ✅ Done — published
 
-* GitHub CLI 2.99.0 is installed but **not authenticated** — `gh auth login` needs an interactive
-  browser sign-in. Repo creation (`gh repo create Zeeyan05/technocore-agent-console --public
-  --source . --push --remote origin`) is one command away once that's done.
-* Optional: connect the GitHub repo in Vercel so `master` pushes deploy automatically.
+* GitHub CLI 2.99.0 installed via winget; signed in as `Zeeyan05` (device flow).
+* Repo created and pushed: **https://github.com/Zeeyan05/technocore-agent-console** (public,
+  default branch `master`, all 7 commits). Verified `HEAD == origin/master`, 61 tracked files, and
+  no `.env` / `.pem` / `.vercel` / 64-hex seed literals anywhere in the tracked tree.
+
+### 🔄 Next
+
+* **Vercel is not connected to this repo.** The deployment is CLI-linked
+  (`.vercel/project.json`, gitignored), so pushing to `master` does **not** deploy. Either run
+  `npx vercel --prod`, or connect the repo under Vercel → Project → Settings → Git to get
+  push-to-deploy.
+* Optional: rename the default branch `master` → `main` for consistency with newer tooling
+  defaults (`gh repo edit --default-branch main` after pushing a `main` branch).
