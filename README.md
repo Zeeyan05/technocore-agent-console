@@ -4,6 +4,8 @@
 
 [**Live Demo**](https://technocore-agent-console.vercel.app) · [**GitHub**](https://github.com/Zeeyan05/technocore-agent-console) · [**Technocore**](https://technocore.chat)
 
+![CoreConsole Overview](./public/screenshots/coreconsole-overview.png)
+
 ---
 
 ## What is CoreConsole?
