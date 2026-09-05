@@ -6,6 +6,7 @@ import { sweep } from '@/lib/crypto/sweep';
 import { isValidDid } from '@/lib/crypto/did';
 import { agentMailboxRoom } from '@/lib/crypto/fingerprint';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Disclosure } from './Disclosure';
 import { MAX_MESSAGE_CHARS } from '@/types/technocore';
 import type { Identity } from '@/lib/identity';
 import type { TechnocoreClient } from '@/lib/client';
@@ -107,22 +108,22 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identity) {
-      setErrorMessage('No active identity loaded. Please generate or import an identity first.');
+      setErrorMessage('Your agent has no identity yet. Create one on the Identity screen first.');
       setStatus('error');
       return;
     }
     if (!effectiveRoom) {
-      setErrorMessage('Please specify a target mailbox / channel room.');
+      setErrorMessage('Choose a mailbox to deliver this message to.');
       setStatus('error');
       return;
     }
     if (!sweptText) {
-      setErrorMessage('Message cannot be empty after single-line sweep.');
+      setErrorMessage('Write something before sending.');
       setStatus('error');
       return;
     }
     if (sweptText.length > MAX_MESSAGE_CHARS) {
-      setErrorMessage(`Message exceeds limit of ${MAX_MESSAGE_CHARS} characters.`);
+      setErrorMessage(`Message is too long. The limit is ${MAX_MESSAGE_CHARS} characters.`);
       setStatus('error');
       return;
     }
@@ -161,142 +162,178 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-surface-2/50">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="w-5 h-5 text-accent" />
+            <Send className="w-5 h-5 text-accent" aria-hidden="true" />
             <div>
               <h2 id="compose-title" className="text-base font-semibold text-ink">
-                Compose Signed Message
+                New message
               </h2>
               <p className="text-xs text-ink-3 mt-0.5">
-                Authenticates with Ed25519 signature &amp; monotonic nonce
+                Signed with your agent identity so the recipient can verify it came from you
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             disabled={isBusy}
-            className="p-1.5 rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-40"
+            className="inline-flex items-center justify-center p-1.5 min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-40"
             aria-label="Close compose"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSend} className="p-6 space-y-5">
-          {/* Sender Identity Preview */}
-          <div className="p-3 rounded-md bg-bg/40 border border-line flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="text-[11px] font-medium text-ink-3 uppercase tracking-wider">Signing As</span>
-              <div className="font-mono text-xs text-accent truncate max-w-sm">
-                {identity?.did || 'No Identity Loaded'}
+          {/* Who this will be signed as — reassurance, not a protocol readout */}
+          <div className="p-3 rounded-md bg-bg/40 border border-line flex items-center justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-[11px] font-medium text-ink-3">Sending as</span>
+              <div className="font-mono text-xs text-accent truncate">
+                {identity?.did || 'No agent identity yet'}
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-success-tint text-success border border-success/30">
-              Ed25519
-            </span>
+            {identity && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-success-tint text-success border border-success/30 shrink-0">
+                <ShieldCheck className="w-3 h-3" aria-hidden="true" />
+                <span>Will be signed</span>
+              </span>
+            )}
           </div>
 
-          {/* Recipient DID (Optional / Contact lookup) */}
+          {/* Recipient — pick a saved agent, or paste an identity */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-ink-2">Recipient DID (Optional Attribution)</label>
-              {contacts.length > 0 && (
-                <div className="flex items-center gap-1 text-[11px] text-ink-3">
-                  <Users className="w-3 h-3" />
-                  <span>Quick Pick:</span>
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) handleContactSelect(e.target.value);
-                    }}
-                    className="bg-surface-2 border border-line rounded px-1.5 py-0.5 text-xs text-accent font-mono"
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Saved Contacts</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.did}>
-                        {c.nickname} ({c.did.slice(8, 14)}...)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            <span className="block text-xs font-medium text-ink-2">Recipient</span>
+
+            {contacts.length > 0 && (
+              <div className="space-y-1.5">
+                <label htmlFor="compose-contact" className="flex items-center gap-1.5 text-[11px] text-ink-3">
+                  <Users className="w-3 h-3" aria-hidden="true" />
+                  <span>Choose a contact</span>
+                </label>
+                <select
+                  id="compose-contact"
+                  value={contacts.some((c) => c.did === recipientDid) ? recipientDid : ''}
+                  onChange={(e) => {
+                    if (e.target.value) handleContactSelect(e.target.value);
+                  }}
+                  className="w-full px-3 py-2.5 min-h-11 sm:min-h-0 rounded-md bg-bg/60 border border-line text-xs text-ink focus:outline-none focus:border-line-accent transition-colors"
+                >
+                  <option value="">Select a saved agent…</option>
+                  {contacts.map((c) => (
+                    <option key={c.id} value={c.did}>
+                      {c.nickname}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="compose-recipient" className="block text-[11px] text-ink-3">
+                {contacts.length > 0 ? 'Or paste an agent identity' : 'Paste an agent identity'}
+              </label>
+              <input
+                id="compose-recipient"
+                type="text"
+                value={recipientDid}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setRecipientDid(val);
+                  if (val.startsWith('did:key:') && isValidDid(val.trim())) {
+                    setTargetRoom(agentMailboxRoom(val.trim()));
+                  }
+                  clearError();
+                }}
+                placeholder="did:key:z6Mk…"
+                className="w-full px-3.5 py-2.5 min-h-11 sm:min-h-0 rounded-md bg-bg/60 border border-line text-xs font-mono text-accent placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
+              />
+              <p className="text-[11px] text-ink-4">
+                Optional. Filling this in picks the matching mailbox below.
+              </p>
             </div>
-            <input
-              type="text"
-              value={recipientDid}
-              onChange={(e) => {
-                const val = e.target.value;
-                setRecipientDid(val);
-                if (val.startsWith('did:key:') && isValidDid(val.trim())) {
-                  setTargetRoom(agentMailboxRoom(val.trim()));
-                }
-                clearError();
-              }}
-              placeholder="did:key:z6Mk... (optional peer agent identity)"
-              className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-accent placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
-            />
           </div>
 
-          {/* Target Channel / Room (Authoritative Network Destination) */}
+          {/* Mailbox — the actual delivery destination */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-ink-2">Target Mailbox / Channel Room</label>
-              <span className="text-[10px] text-ink-4 font-mono">First-come destination</span>
-            </div>
+            <label htmlFor="compose-room" className="block text-xs font-medium text-ink-2">
+              Mailbox
+            </label>
             <input
+              id="compose-room"
               type="text"
               value={targetRoom}
               onChange={(e) => {
                 setTargetRoom(e.target.value);
                 clearError();
               }}
-              placeholder="e.g. mb-e3b0c44298fc1c14, lobby, sdk-test, d-myroom"
+              placeholder="e.g. mb-e3b0c44298fc1c14, lobby, d-myroom"
               required
-              className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-success placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
+              className="w-full px-3.5 py-2.5 min-h-11 sm:min-h-0 rounded-md bg-bg/60 border border-line text-xs font-mono text-success placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
             />
-            {recipientDid.startsWith('did:key:') && (
-              <p className="text-[11px] text-ink-3 font-mono">
-                Note: Room names are not cryptographically bound to DIDs. <span className="text-ink">mb-&lt;fingerprint&gt;</span> is an application convention you can override above.
-              </p>
-            )}
+            <p className="text-[11px] text-ink-3 leading-relaxed">
+              Where the message is delivered.
+              {recipientDid.startsWith('did:key:') && (
+                <>
+                  {' '}Room names are first-come and are not cryptographically bound to an identity —{' '}
+                  <span className="font-mono text-ink-2">mb-&lt;fingerprint&gt;</span> is a
+                  convention this app follows, and you can override it.
+                </>
+              )}
+            </p>
           </div>
 
           {/* Message Body */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-ink-2">Message Text</label>
-              <span className={`text-[11px] font-mono ${text.length > MAX_MESSAGE_CHARS ? 'text-danger font-bold' : 'text-ink-3'}`}>
+              <label htmlFor="compose-text" className="text-xs font-medium text-ink-2">
+                Message
+              </label>
+              <span
+                className={`text-[11px] font-mono tabular-nums ${
+                  text.length > MAX_MESSAGE_CHARS ? 'text-danger font-bold' : 'text-ink-3'
+                }`}
+              >
                 {text.length} / {MAX_MESSAGE_CHARS}
               </span>
             </div>
             <textarea
+              id="compose-text"
               rows={4}
               value={text}
               onChange={(e) => {
                 setText(e.target.value);
                 clearError();
               }}
-              placeholder="Type your message... (Single-line sweep will automatically clean whitespace before signing)"
-              className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-ink placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors resize-none"
+              placeholder="Write your message…"
+              className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs text-ink placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors resize-none leading-relaxed"
             />
+            <p className="text-[11px] text-ink-4">
+              Line breaks and repeated spaces are collapsed before the message is signed.
+            </p>
           </div>
 
-          {/* Real-time Canonical Payload Preview */}
+          {/* The exact bytes that get signed — kept, but out of the everyday path. */}
           {sweptText && (
-            <div className="p-3 bg-bg/40 rounded-md border border-line space-y-1.5">
-              <span className="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">
-                Preview Canonical Signing Payload
-              </span>
-              <div className="font-mono text-[11px] text-accent break-all">
-                {effectiveRoom}|&lt;auto-nonce&gt;|{sweptText}
+            <Disclosure label="What will be signed" variant="inline">
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">
+                  Canonical signing payload
+                </span>
+                <div className="font-mono text-[11px] text-accent break-all">
+                  {effectiveRoom}|&lt;auto-nonce&gt;|{sweptText}
+                </div>
+                <p className="text-[11px] text-ink-4 leading-relaxed">
+                  The nonce is a counter this app fills in for you at send time, so the same
+                  message can never be replayed.
+                </p>
               </div>
-            </div>
+            </Disclosure>
           )}
 
           {/* Error Banner */}
           {errorMessage && (
             <div className="p-3 rounded-md bg-danger-tint border border-danger/40 text-danger text-xs flex items-start gap-2" role="alert">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -304,8 +341,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           {/* Success Banner */}
           {status === 'success' && (
             <div className="p-3 rounded-md bg-success-tint border border-success/40 text-success text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Message signed and broadcast successfully!</span>
+              <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>Message signed and sent</span>
             </div>
           )}
 
@@ -315,34 +352,34 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isBusy}
-              className="px-4 py-2 rounded-md bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 transition-colors disabled:opacity-50"
+              className="px-4 py-2 min-h-11 sm:min-h-0 rounded-md bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!text.trim() || isBusy}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-md bg-accent text-on-accent text-xs font-bold transition-colors hover:bg-accent/85 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-5 py-2 min-h-11 sm:min-h-0 rounded-md bg-accent text-on-accent text-xs font-bold transition-colors hover:bg-accent/85 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {status === 'signing' ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Signing (Ed25519)...</span>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  <span>Signing…</span>
                 </>
               ) : status === 'sending' ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Broadcasting...</span>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  <span>Sending…</span>
                 </>
               ) : status === 'success' ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Sent</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Sign &amp; Send Message</span>
+                  <Send className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Send message</span>
                 </>
               )}
             </button>

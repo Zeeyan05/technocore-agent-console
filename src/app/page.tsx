@@ -69,6 +69,7 @@ export default function AgentConsolePage() {
   const {
     contacts,
     addContact,
+    updateContact,
     deleteContact,
   } = useContacts();
 
@@ -113,10 +114,10 @@ export default function AgentConsolePage() {
       const { ok, reason } = await copyText(did);
       if (ok) {
         setDidCopied(true);
-        showToast('Copied full DID to clipboard', 'success');
+        showToast('Copied your agent identity', 'success');
         setTimeout(() => setDidCopied(false), 2000);
       } else {
-        showToast(`Could not copy DID: ${reason ?? 'clipboard blocked'}`, 'error');
+        showToast(`Could not copy identity: ${reason ?? 'clipboard blocked'}`, 'error');
       }
     },
     [showToast]
@@ -155,6 +156,23 @@ export default function AgentConsolePage() {
     }
   }, []);
 
+  // Which mailbox the inbox reads. A mailbox name is app configuration, not a
+  // cryptographic binding, so choosing the conventional one just drops the
+  // override rather than storing it as a special case.
+  const handleSetMailbox = useCallback(
+    (room: string) => {
+      const next = room.trim().toLowerCase();
+      if (!next) return;
+      const isDefault = !!identity && next === identity.mailboxRoom;
+      setCustomMailboxRoom(isDefault ? undefined : next);
+      showToast(
+        isDefault ? 'Reading your default mailbox again' : `Now reading ${next}`,
+        'info'
+      );
+    },
+    [identity, showToast]
+  );
+
   const showConnectionBanner =
     connectionState === 'error' && errorReason && !errorBannerDismissed;
 
@@ -167,6 +185,7 @@ export default function AgentConsolePage() {
         latencyMs={latencyMs}
         onOpenCompose={() => handleOpenCompose()}
         onOpenVerifier={() => setIsVerifierOpen(true)}
+        onOpenIdentity={() => setActiveTab('identity')}
         onRefreshConnection={() => checkConnection()}
         isChecking={isChecking}
         onCopyDid={handleCopyDid}
@@ -198,13 +217,14 @@ export default function AgentConsolePage() {
         {activeTab === 'overview' && (
           <OverviewTab
             identity={identity}
+            connectionState={connectionState}
+            activeMailbox={activeRoom}
             unreadCount={unreadCount}
             recentMessages={messages}
             rooms={rooms}
-            contactsCount={contacts.length}
+            contacts={contacts}
             onNavigate={handleSelectTab}
             onOpenCompose={handleOpenCompose}
-            onInspectMessage={handleInspectMessage}
             onCopyText={handleCopyText}
             copiedKey={copiedKey}
           />
@@ -224,7 +244,7 @@ export default function AgentConsolePage() {
             onOpenCompose={handleOpenCompose}
             onAddContact={(contact) => {
               addContact(contact);
-              showToast(`Saved contact: ${contact.nickname}`, 'success');
+              showToast(`Saved ${contact.nickname}`, 'success');
             }}
             onCopyText={handleCopyText}
             copiedKey={copiedKey}
@@ -236,17 +256,20 @@ export default function AgentConsolePage() {
             contacts={contacts}
             onAddContact={(contact) => {
               addContact(contact);
-              showToast(`Added agent contact: ${contact.nickname}`, 'success');
+              showToast(`Saved ${contact.nickname}`, 'success');
+            }}
+            onUpdateContact={(id, updates) => {
+              updateContact(id, updates);
+              showToast('Contact updated', 'success');
             }}
             onDeleteContact={(id) => {
               deleteContact(id);
-              showToast('Deleted contact', 'info');
+              showToast('Contact removed', 'info');
             }}
             onOpenCompose={handleOpenCompose}
             onSelectMailbox={(room) => {
-              setCustomMailboxRoom(room);
+              handleSetMailbox(room);
               setActiveTab('inbox');
-              showToast(`Switched to mailbox channel: ${room}`, 'info');
             }}
             onCopyText={handleCopyText}
             copiedKey={copiedKey}
@@ -260,6 +283,8 @@ export default function AgentConsolePage() {
             rooms={rooms}
             onOpenCompose={handleOpenCompose}
             onInspectMessage={handleInspectMessage}
+            onCopyText={handleCopyText}
+            copiedKey={copiedKey}
           />
         )}
 
@@ -267,17 +292,21 @@ export default function AgentConsolePage() {
           <IdentityTab
             identity={identity}
             isLoading={isIdentityLoading}
+            activeMailbox={activeRoom}
             onGenerateNew={async () => {
               const id = await generateNew();
-              showToast('Generated fresh Ed25519 identity', 'success');
+              showToast('New agent identity created', 'success');
               return id;
             }}
             onImportIdentity={async (seed) => {
               const id = await importIdentity(seed);
-              showToast('Imported and verified identity', 'success');
+              showToast('Identity imported', 'success');
               return id;
             }}
             onOpenExportModal={() => setIsExportSeedOpen(true)}
+            onSetMailbox={handleSetMailbox}
+            onNavigate={handleSelectTab}
+            onOpenCompose={() => handleOpenCompose()}
             onCopyText={handleCopyText}
             copiedKey={copiedKey}
           />
@@ -323,7 +352,7 @@ export default function AgentConsolePage() {
         defaultRecipient={composeRecipient}
         defaultRoom={composeRoom}
         onSuccess={(targetRoom) => {
-          showToast(`Message broadcast to #${targetRoom}`, 'success');
+          showToast(`Message signed and sent to ${targetRoom}`, 'success');
         }}
       />
 

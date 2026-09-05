@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ShieldCheck, ShieldAlert, ShieldX, Play, RotateCcw } from 'lucide-react';
+import { X, ShieldCheck, ShieldX, Play, RotateCcw, Loader2 } from 'lucide-react';
 import { verifyRawComponents } from '@/lib/crypto/verify';
+import { formatDidAbbreviated, isValidDid } from '@/lib/crypto/did';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import type { VerificationBreakdown } from '@/types/technocore';
 
@@ -21,6 +22,9 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
   const [text, setText] = useState<string>('');
   const [sig, setSig] = useState<string>('');
   const [result, setResult] = useState<VerificationBreakdown | null>(null);
+  /** The identity the current result belongs to, captured at verify time so the
+   *  verdict cannot drift if the field is edited afterwards. */
+  const [resultDid, setResultDid] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const panelRef = useModalA11y(isOpen, onClose, { lockClose: isVerifying });
 
@@ -30,13 +34,15 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
     e.preventDefault();
     setIsVerifying(true);
     try {
+      const submittedDid = did.trim();
       const breakdown = await verifyRawComponents(
         room.trim(),
-        did.trim(),
+        submittedDid,
         nonce.trim(),
         text,
         sig.trim()
       );
+      setResultDid(submittedDid);
       setResult(breakdown);
     } finally {
       setIsVerifying(false);
@@ -50,6 +56,7 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
     setText('');
     setSig('');
     setResult(null);
+    setResultDid('');
   };
 
   return (
@@ -64,34 +71,42 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-surface-2/50">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="w-5 h-5 text-accent" />
+            <ShieldCheck className="w-5 h-5 text-accent" aria-hidden="true" />
             <div>
               <h2 id="verifier-title" className="text-base font-semibold text-ink">
-                Standalone Protocol Verifier
+                Verify a Technocore message
               </h2>
               <p className="text-xs text-ink-3 mt-0.5">
-                Test and verify any Technocore message offline without network access
+                Paste the parts of a signed message and check it here in your browser.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close standalone verifier"
+            aria-label="Close verifier"
             className="p-1.5 rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Form & Diagnostics */}
         <form onSubmit={handleVerify} className="p-6 space-y-4 overflow-y-auto">
+          <p className="text-xs text-ink-3 leading-relaxed">
+            A utility for checking a message you were given somewhere else. Nothing is sent
+            anywhere — the signature is checked by this page.
+          </p>
+
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-ink-2">Signer DID (did:key:z6Mk...)</label>
+            <label htmlFor="verify-did" className="block text-xs font-medium text-ink-2">
+              Signing agent identity
+            </label>
             <input
+              id="verify-did"
               type="text"
               value={did}
               onChange={(e) => setDid(e.target.value)}
-              placeholder="did:key:z6Mk..."
+              placeholder="did:key:z6Mk…"
               required
               className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-accent placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
             />
@@ -99,48 +114,64 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-ink-2">Room Name</label>
+              <label htmlFor="verify-room" className="block text-xs font-medium text-ink-2">
+                Room or mailbox
+              </label>
               <input
+                id="verify-room"
                 type="text"
                 value={room}
                 onChange={(e) => setRoom(e.target.value)}
-                placeholder="lobby or mb-..."
+                placeholder="lobby or mb-…"
                 required
                 className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-ink placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-ink-2">Nonce (1-19 digits)</label>
+              <label htmlFor="verify-nonce" className="block text-xs font-medium text-ink-2">
+                Nonce
+              </label>
               <input
+                id="verify-nonce"
                 type="text"
+                inputMode="numeric"
                 value={nonce}
                 onChange={(e) => setNonce(e.target.value)}
                 placeholder="e.g. 1788172579911"
                 required
-                className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-success placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
+                className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-success placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors tabular-nums"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-ink-2">Message Text (Swept)</label>
+            <label htmlFor="verify-text" className="block text-xs font-medium text-ink-2">
+              Message text
+            </label>
             <textarea
+              id="verify-text"
               rows={2}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Exact stored text..."
+              placeholder="The exact text as stored…"
               required
               className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-ink placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors resize-none"
             />
+            <p className="text-[11px] text-ink-4">
+              Must match character for character — one extra space and the check fails.
+            </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-ink-2">Signature (86 Base64URL chars ending in AQgw)</label>
+            <label htmlFor="verify-sig" className="block text-xs font-medium text-ink-2">
+              Signature
+            </label>
             <input
+              id="verify-sig"
               type="text"
               value={sig}
               onChange={(e) => setSig(e.target.value)}
-              placeholder="86-character base64url signature..."
+              placeholder="86-character base64url signature…"
               required
               className="w-full px-3.5 py-2.5 rounded-md bg-bg/60 border border-line text-xs font-mono text-warning placeholder:text-ink-4 focus:outline-none focus:border-line-accent transition-colors"
             />
@@ -154,25 +185,34 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
                   ? 'bg-success-tint border-success/40 text-success'
                   : 'bg-danger-tint border-danger/40 text-danger'
               }`}
+              role="status"
             >
               <div className="flex items-center gap-2">
                 {result.valid ? (
-                  <ShieldCheck className="w-5 h-5 text-success" />
+                  <ShieldCheck className="w-5 h-5 text-success shrink-0" aria-hidden="true" />
                 ) : (
-                  <ShieldX className="w-5 h-5 text-danger" />
+                  <ShieldX className="w-5 h-5 text-danger shrink-0" aria-hidden="true" />
                 )}
                 <span className="font-semibold text-sm">
-                  {result.valid ? 'Signature Valid & Verified' : 'Verification Failed'}
+                  {result.valid ? 'Signature valid' : 'Signature did not verify'}
                 </span>
               </div>
-              <p className="text-xs text-ink-2">
+              {result.valid && (
+                <p className="text-xs text-ink-2">
+                  Signed by{' '}
+                  <span className="font-mono text-accent">
+                    {isValidDid(resultDid) ? formatDidAbbreviated(resultDid) : resultDid}
+                  </span>
+                </p>
+              )}
+              <p className="text-xs text-ink-2 leading-relaxed">
                 {result.valid
-                  ? 'Ed25519 cryptographic check passed. The signature matches the public key and canonical UTF-8 payload.'
-                  : result.error || 'Cryptographic mismatch.'}
+                  ? 'This agent really did sign this exact text, in this room, with this nonce.'
+                  : result.error || 'The signature does not match these values.'}
               </p>
               {result.canonicalPayloadText && (
-                <div className="p-2 bg-bg/50 rounded font-mono text-xs text-accent break-all">
-                  Canonical: {result.canonicalPayloadText}
+                <div className="p-2 bg-bg/50 rounded font-mono text-[11px] text-accent break-all max-h-24 overflow-y-auto">
+                  {result.canonicalPayloadText}
                 </div>
               )}
             </div>
@@ -185,7 +225,7 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
               onClick={handleReset}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 text-xs text-ink-3 font-medium border border-line transition-colors"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Clear</span>
             </button>
             <button
@@ -193,8 +233,17 @@ export const StandaloneVerifierModal: React.FC<StandaloneVerifierModalProps> = (
               disabled={isVerifying}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-md bg-accent text-on-accent text-xs font-bold transition-colors hover:bg-accent/85 disabled:opacity-50"
             >
-              <Play className="w-3.5 h-3.5" />
-              <span>Run Verification</span>
+              {isVerifying ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  <span>Checking…</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Verify</span>
+                </>
+              )}
             </button>
           </div>
         </form>
