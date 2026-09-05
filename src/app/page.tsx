@@ -49,6 +49,7 @@ export default function AgentConsolePage() {
     client,
     connectionState,
     latencyMs,
+    lastChecked,
     errorReason,
     rooms,
     serverVersion,
@@ -60,7 +61,9 @@ export default function AgentConsolePage() {
     activeRoom,
     messages,
     isLoading: isMailboxLoading,
+    isPolling,
     error: mailboxError,
+    lastSeq,
     unreadCount,
     markAsRead,
     markAllAsRead,
@@ -177,7 +180,9 @@ export default function AgentConsolePage() {
     connectionState === 'error' && errorReason && !errorBannerDismissed;
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg text-ink selection:bg-accent/30 selection:text-ink">
+    /* No background of its own: the ambient light and grid layers mounted in
+       layout.tsx sit behind this, and an opaque page would hide them. */
+    <div className="min-h-screen flex flex-col text-ink selection:bg-accent/30 selection:text-ink">
       {/* Header */}
       <Header
         identity={identity}
@@ -218,6 +223,10 @@ export default function AgentConsolePage() {
           <OverviewTab
             identity={identity}
             connectionState={connectionState}
+            latencyMs={latencyMs}
+            lastChecked={lastChecked}
+            isPolling={isPolling}
+            lastSeq={lastSeq}
             activeMailbox={activeRoom}
             unreadCount={unreadCount}
             recentMessages={messages}
@@ -281,6 +290,7 @@ export default function AgentConsolePage() {
             client={client}
             identity={identity}
             rooms={rooms}
+            contacts={contacts}
             onOpenCompose={handleOpenCompose}
             onInspectMessage={handleInspectMessage}
             onCopyText={handleCopyText}
@@ -314,14 +324,17 @@ export default function AgentConsolePage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-line py-5 bg-bg text-xs text-ink-3">
+      <footer className="w-full border-t border-line py-5 text-xs text-ink-3">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-ink-3">
             © Shaikh Zeeyan (<a
               href="https://x.com/ShaikhZeeyan05"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-ink-2 hover:text-accent transition-colors"
+              /* Vertical padding on an inline link grows the tappable box without
+                 adding height to the line, so an 14px-tall credit link is still
+                 comfortable to hit on a 360px phone. */
+              className="py-1.5 text-ink-2 hover:text-accent transition-colors"
             >
               @ShaikhZeeyan05
             </a>)

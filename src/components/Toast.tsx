@@ -28,12 +28,16 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-lg border shadow-xl transition-all duration-200 animate-in slide-in-from-bottom-2 ${
+          /* Rises into place from below, which is the direction it came from.
+             `anim-rise` is the app's own keyframe — the old `animate-in` classes
+             were from a plugin this project does not install, so they animated
+             nothing at all. */
+          className={`anim-rise pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-lg border surface-raised ${
             toast.type === 'success'
-              ? 'bg-surface border-success/40 text-success'
+              ? 'border-success/40 text-success'
               : toast.type === 'error'
-              ? 'bg-surface border-danger/40 text-danger'
-              : 'bg-surface border-accent/40 text-accent'
+              ? 'border-danger/40 text-danger'
+              : 'border-accent/40 text-accent'
           }`}
         >
           <div className="flex items-center gap-2 text-sm font-medium">
@@ -45,7 +49,7 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
           <button
             onClick={() => onDismiss(toast.id)}
             aria-label={`Dismiss notification: ${toast.message}`}
-            className="text-ink-3 hover:text-ink p-0.5 rounded transition-colors shrink-0"
+            className="press inline-flex items-center justify-center p-1.5 min-w-9 min-h-9 sm:min-w-0 sm:min-h-0 rounded text-ink-3 hover:text-ink shrink-0"
           >
             <X className="w-3.5 h-3.5" />
           </button>

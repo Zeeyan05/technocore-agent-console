@@ -5,8 +5,6 @@ import {
   Send,
   Inbox,
   Users,
-  Copy,
-  Check,
   ArrowRight,
   Activity,
   MessagesSquare,
@@ -15,12 +13,16 @@ import {
   UserPlus,
   Mail,
 } from 'lucide-react';
-import { Identicon } from './Identicon';
-import { VerificationSeal, ConnectionDot } from './StatusBadge';
+import { AgentIdentityMark } from './AgentIdentityMark';
+import { VerificationSeal, StatusIndicator } from './StatusBadge';
 import { Disclosure } from './Disclosure';
+import { GlowSurface, SectionHeader } from './Surface';
+import { IdentityHero } from './IdentityHero';
+import { MetricCard, ActivityWave, NodeCluster, SignalArcs } from './MetricCard';
+import { ActivityItem } from './ActivityItem';
 import { truncateMiddle } from './DataField';
 import { describeSender } from '@/lib/senderLabel';
-import { timeAgo, fullTimestamp } from '@/lib/time';
+import { timeAgo } from '@/lib/time';
 import type { Identity } from '@/lib/identity';
 import type { VerifiedMessage } from '@/hooks/useMailbox';
 import type { RoomInfo, AgentContact, ConnectionState } from '@/types/technocore';
@@ -29,6 +31,14 @@ import type { NavTab } from './Navigation';
 interface OverviewTabProps {
   identity: Identity | null;
   connectionState: ConnectionState;
+  /** Round-trip time from the last health probe, or null if it failed. */
+  latencyMs: number | null;
+  /** When that probe answered. Drives the timestamp on the system events. */
+  lastChecked: Date | null;
+  /** True while a mailbox long-poll is open. */
+  isPolling: boolean;
+  /** Highest sequence number seen — used only as the arrival-pulse trigger. */
+  lastSeq: number;
   /** The room the mailbox is actually reading, which may be a custom one. */
   activeMailbox: string;
   unreadCount: number;
@@ -41,39 +51,75 @@ interface OverviewTabProps {
   copiedKey: string | null;
 }
 
-interface StatCardProps {
-  label: string;
-  value: string;
-  hint: string;
-  icon: React.ComponentType<{ className?: string }>;
-  onClick: () => void;
-  mono?: boolean;
+const BUCKETS = 14;
+
+/**
+ * The shape of what is actually in the mailbox: the held messages spread across
+ * the window they arrived in, oldest bucket first. Nothing is extrapolated — an
+ * empty mailbox returns all zeros, which `ActivityWave` draws as a flat baseline
+ * rather than as invented traffic.
+ */
+function arrivalBuckets(messages: readonly VerifiedMessage[]): number[] {
+  const out: number[] = new Array(BUCKETS).fill(0);
+  const times = messages
+    .map((m) => Date.parse(m.ts))
+    .filter((t) => Number.isFinite(t))
+    .sort((a, b) => a - b);
+
+  if (times.length === 0) return out;
+
+  const first = times[0];
+  const span = times[times.length - 1] - first;
+
+  times.forEach((t) => {
+    const slot =
+      span > 0 ? Math.min(BUCKETS - 1, Math.floor(((t - first) / span) * BUCKETS)) : BUCKETS - 1;
+    out[slot] += 1;
+  });
+
+  return out;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, hint, icon: Icon, onClick, mono }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="text-left bg-surface border border-line hover:border-line-2 hover:bg-surface-2/40 rounded-lg p-4 transition-colors"
-  >
-    <span className="flex items-center justify-between mb-2">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3">{label}</span>
-      <Icon className="w-3.5 h-3.5 text-ink-4" aria-hidden="true" />
-    </span>
-    <span
-      className={`block text-2xl font-semibold text-ink tabular-nums truncate ${
-        mono ? 'font-mono text-base pt-1.5 pb-1' : ''
-      }`}
-    >
-      {value}
-    </span>
-    <span className="block text-[11px] text-ink-3 mt-1 truncate">{hint}</span>
-  </button>
-);
+/** Wall-clock for a system event. Client-only state, so no hydration mismatch. */
+function clockTime(date: Date | null): string | undefined {
+  return date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined;
+}
+
+/** The contacts tile's visual: the saved agents themselves, not a count again. */
+const ContactMarks: React.FC<{ contacts: readonly AgentContact[] }> = ({ contacts }) => {
+  if (contacts.length === 0) {
+    return <p className="h-5 text-[11px] text-ink-4 leading-5">No agents saved yet</p>;
+  }
+
+  return (
+    <div className="flex items-center h-5 -space-x-1.5">
+      {contacts.slice(0, 5).map((contact) => (
+        <AgentIdentityMark
+          key={contact.id}
+          did={contact.did}
+          size={20}
+          className="rounded-[5px] ring-1 ring-bg"
+        />
+      ))}
+      {contacts.length > 5 && (
+        <span className="pl-3 font-mono text-[10px] text-ink-4">+{contacts.length - 5}</span>
+      )}
+    </div>
+  );
+};
+
+const PRIMARY_BTN =
+  'press inline-flex items-center gap-1.5 px-3.5 py-2 min-h-11 sm:min-h-9 rounded-md bg-accent text-on-accent text-xs font-semibold hover:bg-accent/85 active:bg-accent/75';
+const QUIET_BTN =
+  'press inline-flex items-center gap-1.5 px-3 py-2 min-h-11 sm:min-h-9 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2';
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
   identity,
   connectionState,
+  latencyMs,
+  lastChecked,
+  isPolling,
+  lastSeq,
   activeMailbox,
   unreadCount,
   recentMessages,
@@ -87,252 +133,389 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const currentDid = identity?.did || '';
   const signed = recentMessages.filter((m) => m.sig);
   const verifiedCount = signed.filter((m) => m.verification?.valid).length;
+  const unsignedCount = recentMessages.length - signed.length;
+  const buckets = React.useMemo(() => arrivalBuckets(recentMessages), [recentMessages]);
+  const probeTime = clockTime(lastChecked);
+  const feed = recentMessages.slice(0, 5);
 
-  return (
-    <div className="space-y-5">
-      {/* ── Agent hero: who you are, whether you are reachable ─────────────── */}
-      <section className="bg-surface border border-line rounded-lg p-5 sm:p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-          <div className="flex items-start gap-4 min-w-0">
-            {currentDid ? (
-              <Identicon
-                did={currentDid}
-                size={48}
-                className="rounded-md border border-line shrink-0 mt-0.5"
-              />
-            ) : (
-              <span className="w-12 h-12 rounded-md border border-line bg-surface-2 flex items-center justify-center shrink-0 mt-0.5">
-                <UserPlus className="w-5 h-5 text-ink-3" aria-hidden="true" />
-              </span>
-            )}
+  /* The mailbox line is deliberately worded as a room this console *watches*.
+     A mailbox name is a convention, not a cryptographic binding to the DID, and
+     the UI must never suggest otherwise. */
+  const mailboxAside = (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+        Agent mailbox
+      </p>
+      <p className="mt-1 font-mono text-[11px] text-ink-2 truncate" title={activeMailbox}>
+        {activeMailbox || '—'}
+      </p>
+      <p className="mt-1 text-[11px] text-ink-4 leading-relaxed">
+        A room this console watches. Not proof of ownership.
+      </p>
+    </div>
+  );
 
-            <div className="min-w-0 space-y-2">
-              <p className="text-xs text-ink-3">Welcome back</p>
-              <h1 className="text-lg font-semibold text-ink leading-tight">
-                {currentDid ? 'Your agent' : 'No agent identity yet'}
-              </h1>
+  const heroActions = (
+    <>
+      <button onClick={() => onOpenCompose()} className={PRIMARY_BTN}>
+        <Send className="w-3.5 h-3.5" aria-hidden="true" />
+        <span>New message</span>
+      </button>
+      <button onClick={() => onNavigate('inbox')} className={QUIET_BTN}>
+        <Inbox className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
+        <span>Open inbox</span>
+      </button>
+      <button onClick={() => onNavigate('identity')} className={QUIET_BTN}>
+        <UserCircle className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
+        <span>Agent identity</span>
+      </button>
+    </>
+  );
 
-              {currentDid ? (
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span
-                    className="font-mono text-xs text-accent truncate"
-                    title={currentDid}
-                  >
-                    {truncateMiddle(currentDid, 20, 6)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onCopyText(currentDid, 'Agent DID')}
-                    className="inline-flex items-center justify-center p-1 min-w-9 min-h-9 sm:min-w-6 sm:min-h-6 rounded text-ink-3 hover:text-accent transition-colors shrink-0"
-                    aria-label="Copy your agent identity"
-                    title="Copy your agent identity"
-                  >
-                    {copiedKey === 'Agent DID' ? (
-                      <Check className="w-3.5 h-3.5 text-success" aria-hidden="true" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-ink-3 max-w-md leading-relaxed">
-                  Create an identity and your agent can send messages other agents are able to
-                  verify.
-                </p>
-              )}
-
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
-                <ConnectionDot state={connectionState} />
-                <span className="text-ink-4" aria-hidden="true">
-                  ·
-                </span>
-                {currentDid ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
-                    <ShieldCheck className="w-3.5 h-3.5 text-success" aria-hidden="true" />
-                    <span>Signing ready</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-warning">
-                    <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
-                    <span>Identity required</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={() => onOpenCompose()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-accent text-on-accent text-xs font-semibold transition-colors hover:bg-accent/85"
-            >
-              <Send className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>New message</span>
-            </button>
-            <button
-              onClick={() => onNavigate('inbox')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 border border-line transition-colors"
-            >
-              <Inbox className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
-              <span>Open inbox</span>
-            </button>
-            <button
-              onClick={() => onNavigate('identity')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 border border-line transition-colors"
-            >
-              <UserCircle className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
-              <span>Agent identity</span>
-            </button>
-          </div>
-        </div>
-      </section>
-      {/* ── The four numbers that answer "what is waiting for me" ─────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <StatCard
-          label="Inbox"
-          value={String(unreadCount)}
-          hint={unreadCount === 1 ? '1 unread message' : `${unreadCount} unread messages`}
-          icon={Inbox}
-          onClick={() => onNavigate('inbox')}
-        />
-        <StatCard
-          label="Rooms"
-          value={String(rooms.length)}
-          hint="Shared rooms on Technocore"
-          icon={MessagesSquare}
-          onClick={() => onNavigate('rooms')}
-        />
-        <StatCard
-          label="Contacts"
-          value={String(contacts.length)}
-          hint={contacts.length === 1 ? '1 saved agent' : `${contacts.length} saved agents`}
-          icon={Users}
-          onClick={() => onNavigate('contacts')}
-        />
-        <StatCard
-          label="Agent mailbox"
-          value={activeMailbox ? truncateMiddle(activeMailbox, 8, 5) : '—'}
-          hint={activeMailbox ? 'Receiving messages' : 'Available once an identity exists'}
-          icon={Mail}
-          onClick={() => onNavigate('identity')}
-          mono
-        />
-      </div>
-      {/* ── Verification: the reassurance up front, the engine behind a click ── */}
-      <section className="bg-surface border border-line rounded-lg p-4 sm:p-5 space-y-3">
-        <div className="flex items-center gap-2.5">
-          <ShieldCheck className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
-          <h2 className="text-sm font-medium text-ink">Verification</h2>
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-success-tint text-success border border-success/30">
-            Ready
+  /* Two heroes, because the empty case is a different statement. Rendering a
+     derived identity mark with no identity behind it would be a picture of
+     nothing, so the placeholder stays a placeholder. */
+  const hero = currentDid ? (
+    <IdentityHero
+      did={currentDid}
+      eyebrow="Your agent"
+      title="Your agent"
+      description="This browser holds the signing key. Messages leave here signed, and arrive here verified."
+      connectionState={connectionState}
+      latencyMs={latencyMs}
+      isPolling={isPolling}
+      pulseKey={lastSeq}
+      signingReady
+      onCopyText={onCopyText}
+      copiedKey={copiedKey}
+      aside={mailboxAside}
+      actions={heroActions}
+    />
+  ) : (
+    <GlowSurface variant="identity" className="overflow-hidden">
+      <div className="p-5 sm:p-6 lg:p-7 flex flex-col lg:flex-row lg:items-start gap-5 lg:gap-8">
+        <div className="flex items-start gap-4 sm:gap-5 min-w-0 flex-1">
+          <span className="w-[72px] h-[72px] sm:w-[88px] sm:h-[88px] shrink-0 rounded-2xl border border-dashed border-line-2 bg-surface-2 flex items-center justify-center">
+            <UserPlus className="w-7 h-7 text-ink-4" aria-hidden="true" />
           </span>
-        </div>
-        <p className="text-xs text-ink-3 leading-relaxed max-w-2xl">
-          Messages are verified locally. Before you read a signed message, this browser checks the
-          signature itself — the check never leaves your machine.
-        </p>
-        <Disclosure label="View technical details" variant="inline">
-          <div className="space-y-2 text-xs text-ink-3 leading-relaxed">
-            <p>
-              Signature checks run in-page with <span className="font-mono text-ink-2">@noble/ed25519</span>,
-              against the canonical payload{' '}
-              <span className="font-mono text-ink-2">&lt;room&gt;|&lt;nonce&gt;|&lt;text&gt;</span>. The
-              signer&apos;s public key is extracted from their{' '}
-              <span className="font-mono text-ink-2">did:key</span> identifier, so no key lookup
-              service is involved.
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-identity">
+              Agent identity
             </p>
-            <p className="tabular-nums">
-              This session: {verifiedCount} of {signed.length} signed{' '}
-              {signed.length === 1 ? 'message' : 'messages'} verified
-              {signed.length !== recentMessages.length && recentMessages.length > 0 && (
-                <> · {recentMessages.length - signed.length} arrived unsigned</>
-              )}
-              .
+            <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-ink">
+              No agent identity yet
+            </h1>
+            <p className="mt-1.5 text-[13px] text-ink-3 leading-relaxed max-w-md">
+              Create one and this console can sign messages other agents are able to verify. The key
+              is generated in this browser and never sent anywhere.
             </p>
-            <button
-              type="button"
-              onClick={() => onNavigate('verifier')}
-              className="inline-flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2 transition-colors"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
-              <span>Open verifier</span>
-            </button>
-          </div>
-        </Disclosure>
-      </section>
-      {/* ── Recent activity, phrased as events rather than protocol records ── */}
-      <section className="bg-surface border border-line rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line bg-surface-2/50">
-          <div className="flex items-center gap-2 min-w-0">
-            <Activity className="w-3.5 h-3.5 text-ink-4 shrink-0" aria-hidden="true" />
-            <h2 className="text-sm font-medium text-ink">Recent activity</h2>
-          </div>
-          <button
-            onClick={() => onNavigate('inbox')}
-            className="text-xs font-medium text-accent hover:text-accent/80 inline-flex items-center gap-1 py-2 min-h-11 sm:min-h-0 sm:py-1 -my-1 transition-colors shrink-0"
-          >
-            <span>Open inbox</span>
-            <ArrowRight className="w-3 h-3" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className="divide-y divide-line">
-          {recentMessages.length === 0 ? (
-            <div className="px-6 py-10 flex flex-col items-center text-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-surface-2 border border-line flex items-center justify-center">
-                <Inbox className="w-5 h-5 text-ink-3" aria-hidden="true" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-ink-2">Nothing has happened yet</p>
-                <p className="text-xs text-ink-3 max-w-xs leading-relaxed">
-                  When another agent sends you a message it appears here, already verified.
-                </p>
-              </div>
-              <button
-                onClick={() => onOpenCompose()}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2 transition-colors"
-              >
-                <Send className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Send a message</span>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <button onClick={() => onNavigate('identity')} className={PRIMARY_BTN}>
+                <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Create identity</span>
+              </button>
+              <button onClick={() => onNavigate('rooms')} className={QUIET_BTN}>
+                <MessagesSquare className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
+                <span>Browse rooms</span>
               </button>
             </div>
-          ) : (
-            recentMessages.slice(0, 5).map((msg) => {
-              const sender = describeSender(msg.from, contacts, currentDid);
-              const headline = sender.isSelf
-                ? 'You sent a signed message'
-                : `${sender.name} sent you a message`;
-
-              return (
-                <button
-                  key={msg.seq}
-                  type="button"
-                  onClick={() => onNavigate('inbox')}
-                  className="w-full text-left px-4 py-3.5 hover:bg-surface-2/40 transition-colors flex items-start gap-3"
-                >
-                  <Identicon did={msg.from} size={28} className="mt-0.5 shrink-0 rounded" />
-                  <span className="min-w-0 flex-1 space-y-1">
-                    <span className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-ink">{headline}</span>
-                      <VerificationSeal
-                        verification={msg.verification}
-                        isDidSender={sender.isDid}
-                      />
-                    </span>
-                    <span className="block text-xs text-ink-2 truncate">{msg.text}</span>
-                  </span>
-                  <span
-                    className="text-[11px] text-ink-4 shrink-0 tabular-nums"
-                    title={fullTimestamp(msg.ts)}
-                  >
-                    {timeAgo(msg.ts)}
-                  </span>
-                </button>
-              );
-            })
-          )}
+          </div>
         </div>
-      </section>
+
+        <div className="lg:w-56 shrink-0 flex flex-col gap-3 lg:border-l lg:border-line lg:pl-6">
+          <StatusIndicator state={connectionState} latencyMs={latencyMs} />
+          <span className="inline-flex items-center gap-1.5 text-xs text-warning">
+            <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Identity required to sign</span>
+          </span>
+        </div>
+      </div>
+    </GlowSurface>
+  );
+
+  /* §11: with no personal activity the rail still has something true to say, so
+     it reports the system's own state. Every line below is read from real
+     console state — none of it is a placeholder event. */
+  const systemEvents: Array<{
+    key: string;
+    tone: 'success' | 'accent' | 'identity' | 'warning' | 'neutral';
+    title: string;
+    detail: string;
+    timestamp?: string;
+    live?: boolean;
+  }> = [
+    connectionState === 'connected'
+      ? {
+          key: 'connection',
+          tone: 'success',
+          title: 'Technocore connection established',
+          detail:
+            latencyMs !== null
+              ? `Health probe answered in ${latencyMs}ms`
+              : 'Health probe answered',
+          timestamp: probeTime,
+        }
+      : connectionState === 'error'
+      ? {
+          key: 'connection',
+          tone: 'warning',
+          title: 'Upstream did not answer the last probe',
+          detail: 'The console retries every 30 seconds.',
+          timestamp: probeTime,
+        }
+      : {
+          key: 'connection',
+          tone: 'neutral',
+          title: 'Checking the upstream connection',
+          detail: 'The first health probe is in flight.',
+          live: true,
+        },
+    currentDid
+      ? {
+          key: 'mailbox',
+          tone: 'accent',
+          title: 'Mailbox open',
+          detail: `Watching ${activeMailbox} for signed messages`,
+          live: isPolling,
+        }
+      : {
+          key: 'mailbox',
+          tone: 'neutral',
+          title: 'Mailbox waiting on an identity',
+          detail: 'This console picks a mailbox room once an identity exists.',
+        },
+    {
+      key: 'verify',
+      tone: 'identity',
+      title: 'Local verification ready',
+      detail: 'Ed25519 checks run in this browser — no key lookup service is involved.',
+    },
+    {
+      key: 'idle',
+      tone: 'neutral',
+      title: 'Waiting for agent activity',
+      detail: 'Anything that arrives shows up here, already verified.',
+    },
+  ];
+
+  return (
+    <div className="space-y-3.5 sm:space-y-4">
+      <div className="anim-rise">{hero}</div>
+
+      {/* The four numbers, deliberately not four identical rectangles: the inbox
+          leads at double width with its own arrival shape, rooms and contacts sit
+          quietly beside it, and the mailbox is a name rather than a count. */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-3.5">
+        <div
+          className="col-span-2 anim-rise anim-stagger"
+          style={{ '--i': 1 } as React.CSSProperties}
+        >
+          <MetricCard
+            className="h-full"
+            label="Inbox"
+            value={unreadCount}
+            valueSize="lg"
+            tone="accent"
+            icon={<Inbox className="w-4 h-4" aria-hidden="true" />}
+            detail={unreadCount === 1 ? '1 unread message' : `${unreadCount} unread messages`}
+            visual={<ActivityWave buckets={buckets} />}
+            onClick={() => onNavigate('inbox')}
+            actionLabel={`Open inbox, ${unreadCount} unread`}
+          />
+        </div>
+
+        <div className="anim-rise anim-stagger" style={{ '--i': 2 } as React.CSSProperties}>
+          <MetricCard
+            className="h-full"
+            label="Rooms"
+            value={rooms.length}
+            icon={<MessagesSquare className="w-4 h-4" aria-hidden="true" />}
+            detail="Shared rooms upstream"
+            visual={<NodeCluster count={rooms.length} />}
+            onClick={() => onNavigate('rooms')}
+            actionLabel={`Open rooms, ${rooms.length} listed`}
+          />
+        </div>
+
+        <div className="anim-rise anim-stagger" style={{ '--i': 3 } as React.CSSProperties}>
+          <MetricCard
+            className="h-full"
+            label="Contacts"
+            value={contacts.length}
+            tone="identity"
+            icon={<Users className="w-4 h-4" aria-hidden="true" />}
+            detail={contacts.length === 1 ? '1 saved agent' : `${contacts.length} saved agents`}
+            visual={<ContactMarks contacts={contacts} />}
+            onClick={() => onNavigate('contacts')}
+            actionLabel={`Open the agent directory, ${contacts.length} saved`}
+          />
+        </div>
+
+        <div
+          className="col-span-2 anim-rise anim-stagger"
+          style={{ '--i': 4 } as React.CSSProperties}
+        >
+          <MetricCard
+            className="h-full"
+            label="Agent mailbox"
+            value={activeMailbox ? truncateMiddle(activeMailbox, 11, 6) : '—'}
+            valueSize="sm"
+            icon={<Mail className="w-4 h-4" aria-hidden="true" />}
+            detail={
+              currentDid
+                ? isPolling
+                  ? 'Listening for new messages now'
+                  : 'Connected and waiting'
+                : 'Available once an identity exists'
+            }
+            visual={<SignalArcs active={isPolling} />}
+            onClick={() => onNavigate('identity')}
+            actionLabel="Open agent identity to change the mailbox"
+          />
+        </div>
+      </div>
+
+      {/* Activity leads, verification sits beside it as a narrow status column —
+          the asymmetry is what stops the screen reading as a stack of slabs. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-3.5 items-start">
+        <GlowSurface
+          className="lg:col-span-2 overflow-hidden anim-rise anim-stagger"
+          style={{ '--i': 5 } as React.CSSProperties}
+        >
+          <SectionHeader
+            as="h2"
+            eyebrow="Session"
+            title="Activity"
+            icon={<Activity className="w-4 h-4 text-ink-4" aria-hidden="true" />}
+            className="px-4 sm:px-5 pt-4 sm:pt-5"
+            actions={
+              <button
+                onClick={() => onNavigate('inbox')}
+                className="press inline-flex items-center gap-1 py-2 min-h-11 sm:min-h-0 sm:py-1 -my-1 text-xs font-medium text-accent hover:text-accent/80"
+              >
+                <span>Open inbox</span>
+                <ArrowRight className="w-3 h-3" aria-hidden="true" />
+              </button>
+            }
+          />
+
+          <ol className="px-4 sm:px-5 pt-4 pb-4 sm:pb-5">
+            {feed.length > 0
+              ? feed.map((msg, i) => {
+                  const sender = describeSender(msg.from, contacts, currentDid);
+                  const headline = sender.isSelf
+                    ? 'You sent a signed message'
+                    : `${sender.name} sent you a message`;
+                  const tone = !sender.isDid
+                    ? 'neutral'
+                    : msg.verification?.valid
+                    ? 'success'
+                    : 'warning';
+
+                  return (
+                    <ActivityItem
+                      key={msg.seq}
+                      index={i}
+                      tone={tone}
+                      connected={i < feed.length - 1}
+                      timestamp={timeAgo(msg.ts)}
+                      onClick={() => onNavigate('inbox')}
+                      title={
+                        <span className="flex items-center gap-2 flex-wrap">
+                          {sender.isDid && <AgentIdentityMark did={msg.from} size={18} bare />}
+                          <span className="font-medium">{headline}</span>
+                          <VerificationSeal
+                            verification={msg.verification}
+                            isDidSender={sender.isDid}
+                          />
+                        </span>
+                      }
+                      detail={<span className="block truncate">{msg.text}</span>}
+                    />
+                  );
+                })
+              : systemEvents.map((event, i) => (
+                  <ActivityItem
+                    key={event.key}
+                    index={i}
+                    tone={event.tone}
+                    live={event.live}
+                    connected={i < systemEvents.length - 1}
+                    timestamp={event.timestamp}
+                    title={event.title}
+                    detail={event.detail}
+                  />
+                ))}
+          </ol>
+
+          {feed.length === 0 && (
+            <div className="px-4 sm:px-5 pb-4 sm:pb-5 pl-9 sm:pl-10">
+              <button onClick={() => onOpenCompose()} className={QUIET_BTN}>
+                <Send className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
+                <span>Send the first message</span>
+              </button>
+            </div>
+          )}
+        </GlowSurface>
+
+        {/* §12: a status module, not a dashboard. Both figures below are counted
+            from the messages actually held — there are no invented rates. */}
+        <GlowSurface
+          variant="accent"
+          className="p-4 sm:p-5 anim-rise anim-stagger"
+          style={{ '--i': 6 } as React.CSSProperties}
+        >
+          <SectionHeader
+            as="h2"
+            eyebrow="Trust"
+            title="Verification"
+            icon={<ShieldCheck className="w-4 h-4 text-success" aria-hidden="true" />}
+          />
+
+          <p className="mt-3 text-[13px] text-ink-3 leading-relaxed">
+            Signed messages are checked before you read them. The check runs in this browser and
+            never leaves your machine.
+          </p>
+
+          <dl className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-surface-2 border border-line px-3 py-2.5">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                Verified
+              </dt>
+              <dd className="mt-0.5 font-mono text-xl font-bold text-success">{verifiedCount}</dd>
+            </div>
+            <div className="rounded-lg bg-surface-2 border border-line px-3 py-2.5">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                Signed seen
+              </dt>
+              <dd className="mt-0.5 font-mono text-xl font-bold text-ink">{signed.length}</dd>
+            </div>
+          </dl>
+
+          {unsignedCount > 0 && (
+            <p className="mt-2 text-[11px] text-ink-4">
+              {unsignedCount} {unsignedCount === 1 ? 'message' : 'messages'} arrived without a
+              signature, so nothing about the sender is proven.
+            </p>
+          )}
+
+          <Disclosure label="How the check works" variant="inline" className="mt-4">
+            <div className="text-xs text-ink-3 leading-relaxed">
+              Signature checks run in-page with{' '}
+              <span className="font-mono text-ink-2">@noble/ed25519</span> against the canonical
+              payload <span className="font-mono text-ink-2">&lt;room&gt;|&lt;nonce&gt;|&lt;text&gt;</span>.
+              The signer&apos;s public key is extracted from their{' '}
+              <span className="font-mono text-ink-2">did:key</span> identifier, so no key lookup
+              service is involved.
+            </div>
+          </Disclosure>
+
+          <button onClick={() => onNavigate('verifier')} className={`${QUIET_BTN} mt-4 w-full justify-center`}>
+            <ShieldCheck className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
+            <span>Open verifier</span>
+          </button>
+        </GlowSurface>
+      </div>
     </div>
   );
 };

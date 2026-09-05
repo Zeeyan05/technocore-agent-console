@@ -80,12 +80,12 @@ export const CopyField: React.FC<CopyFieldProps> = ({
           <button
             type="button"
             onClick={() => onCopyText(value, copyLabel)}
-            className="inline-flex items-center justify-center p-1.5 min-w-9 min-h-9 sm:min-w-0 sm:min-h-0 rounded text-ink-3 hover:text-accent transition-colors"
+            className="press inline-flex items-center justify-center p-1.5 min-w-9 min-h-9 sm:min-w-0 sm:min-h-0 rounded text-ink-3 hover:text-accent"
             aria-label={`Copy ${label}`}
             title={`Copy ${label}`}
           >
             {copiedKey === copyLabel ? (
-              <Check className="w-3.5 h-3.5 text-success" aria-hidden="true" />
+              <Check className="w-3.5 h-3.5 text-success anim-seal" aria-hidden="true" />
             ) : (
               <Copy className="w-3.5 h-3.5" aria-hidden="true" />
             )}
@@ -102,5 +102,65 @@ export const CopyField: React.FC<CopyFieldProps> = ({
       </div>
       {hint && <p className="text-[11px] text-ink-3 leading-relaxed">{hint}</p>}
     </div>
+  );
+};
+
+interface TechnicalValueProps {
+  value: string;
+  /** Key passed to onCopyText, also compared against copiedKey for the tick. */
+  copyLabel: string;
+  onCopyText: (text: string, label: string) => void;
+  copiedKey: string | null;
+  /** Accessible name for the copy button, e.g. "agent DID". */
+  name: string;
+  head?: number;
+  tail?: number;
+  tone?: FieldTone;
+  size?: 'xs' | 'sm';
+  className?: string;
+}
+
+/**
+ * The inline sibling of CopyField: one protocol value on a single line with a
+ * copy control and no label of its own, for hero areas and headers where the
+ * surrounding text already says what the value is. Always truncated — the full
+ * string belongs in a CopyField, where it has room to expand.
+ */
+export const TechnicalValue: React.FC<TechnicalValueProps> = ({
+  value,
+  copyLabel,
+  onCopyText,
+  copiedKey,
+  name,
+  head = 12,
+  tail = 6,
+  tone = 'ink',
+  size = 'sm',
+  className = '',
+}) => {
+  const copied = copiedKey === copyLabel;
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 min-w-0 max-w-full ${className}`}>
+      <span
+        className={`font-mono ${size === 'xs' ? 'text-[11px]' : 'text-xs'} ${TONE_CLASS[tone]} truncate`}
+        title={value}
+      >
+        {truncateMiddle(value, head, tail) || '—'}
+      </span>
+      <button
+        type="button"
+        onClick={() => onCopyText(value, copyLabel)}
+        className="press inline-flex items-center justify-center p-1.5 min-w-9 min-h-9 sm:min-w-0 sm:min-h-0 rounded text-ink-4 hover:text-accent shrink-0"
+        aria-label={copied ? `${name} copied` : `Copy ${name}`}
+        title={`Copy ${name}`}
+      >
+        {copied ? (
+          <Check className="w-3.5 h-3.5 text-success anim-seal" aria-hidden="true" />
+        ) : (
+          <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+        )}
+      </button>
+    </span>
   );
 };

@@ -10,8 +10,8 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
-import { Identicon } from './Identicon';
-import { ConnectionDot } from './StatusBadge';
+import { AgentIdentityMark } from './AgentIdentityMark';
+import { StatusIndicator } from './StatusBadge';
 import { formatDidAbbreviated } from '@/lib/crypto/did';
 import type { Identity } from '@/lib/identity';
 import type { ConnectionState } from '@/types/technocore';
@@ -56,7 +56,9 @@ export const Header: React.FC<HeaderProps> = ({
       : 'text-danger';
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-line bg-bg/95 backdrop-blur-xl">
+    /* Translucent, not opaque: the ambient light behind the app has to read
+       through the toolbar, or the header looks pasted onto the page. */
+    <header className="sticky top-0 z-40 w-full border-b border-line bg-bg/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand — logo mark alone on phones, wordmark from sm, version tag from lg */}
         <div className="flex items-center gap-3 min-w-0">
@@ -84,12 +86,13 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onRefreshConnection}
-            className="flex items-center gap-2 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-surface border border-line text-xs cursor-pointer hover:border-line-2 hover:bg-surface-2 transition-colors shrink-0"
+            className="press flex items-center gap-2 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-surface border border-line text-xs cursor-pointer hover:border-line-2 hover:bg-surface-2 shrink-0"
             title="Click to recheck network latency to technocore.chat"
           >
-            <ConnectionDot state={connectionState} />
+            <StatusIndicator state={connectionState} className="hidden sm:inline-flex" />
+            <StatusIndicator state={connectionState} dotOnly className="sm:hidden" />
             {latencyMs !== null && (
-              <span className={`text-[11px] font-mono font-medium border-l border-line pl-2 ${latencyColor}`}>
+              <span className={`text-[11px] font-mono font-medium sm:border-l sm:border-line sm:pl-2 ${latencyColor}`}>
                 {latencyMs}ms
               </span>
             )}
@@ -102,28 +105,31 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Standalone Verifier Shortcut */}
           <button
             onClick={onOpenVerifier}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface hover:bg-surface-2 border border-line text-xs font-medium text-ink-2 hover:text-ink transition-colors"
+            className="press hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface hover:bg-surface-2 border border-line text-xs font-medium text-ink-2 hover:text-ink"
             title="Check a signed message somebody sent you"
           >
             <SearchCode className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
             <span>Verifier</span>
           </button>
 
-          {/* Active Identity Pill — or a route to create one, so the empty case
-              reads as "one step left", not as a broken console. */}
+          {/* Active identity — the mark plus a plain-English label rather than a
+              raw address, which is what keeps this reading as an agent console
+              and not a wallet bar. The DID is still one click (copy) away, and
+              the abbreviation returns once there is room for it. */}
           {currentDid ? (
             <button
               onClick={() => onCopyDid(currentDid)}
-              className="flex items-center gap-2 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-surface border border-line hover:border-line-2 hover:bg-surface-2 transition-colors shrink-0"
-              title={`Click to copy your agent identity: ${currentDid}`}
+              className="press flex items-center gap-2 px-2.5 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-surface border border-line hover:border-identity/40 hover:bg-surface-2 shrink-0"
+              title={`Your agent: ${currentDid} — click to copy`}
               aria-label={`Copy your agent identity ${currentDid}`}
             >
-              <Identicon did={currentDid} size={20} />
-              <span className="hidden sm:inline font-mono text-xs text-ink-2 transition-colors">
+              <AgentIdentityMark did={currentDid} size={22} />
+              <span className="hidden sm:inline text-xs font-medium text-ink-2">Your agent</span>
+              <span className="hidden xl:inline font-mono text-[11px] text-ink-4">
                 {formatDidAbbreviated(currentDid)}
               </span>
               {didCopied ? (
-                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0 anim-seal" aria-hidden="true" />
               ) : (
                 <Copy className="w-3.5 h-3.5 text-ink-3 shrink-0" aria-hidden="true" />
               )}
@@ -131,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <button
               onClick={onOpenIdentity}
-              className="flex items-center gap-2 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-warning-tint border border-warning/40 text-warning hover:bg-warning/15 transition-colors shrink-0"
+              className="press flex items-center gap-2 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-md bg-warning-tint border border-warning/40 text-warning hover:bg-warning/15 shrink-0"
               title="Your agent needs an identity before it can send signed messages"
             >
               <UserPlus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -143,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenCompose}
             aria-label="Write a message"
-            className="inline-flex items-center justify-center gap-2 p-3 sm:px-3.5 sm:py-2 min-h-11 sm:min-h-0 rounded-md bg-accent text-on-accent text-xs font-bold transition-colors hover:bg-accent/85 active:bg-accent/75 shrink-0"
+            className="press inline-flex items-center justify-center gap-2 p-3 sm:px-3.5 sm:py-2 min-h-11 sm:min-h-0 rounded-md bg-accent text-on-accent text-xs font-bold hover:bg-accent/85 active:bg-accent/75 shrink-0"
           >
             <Send className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="hidden md:inline tracking-wide">New Message</span>

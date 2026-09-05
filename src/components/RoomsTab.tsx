@@ -1,36 +1,36 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  MessageSquare,
-  Send,
-  Cpu,
-  Search,
-  RefreshCw,
-  Hash,
-  ShieldAlert,
-} from 'lucide-react';
-import { Identicon } from './Identicon';
+import { Send, Cpu, Search, RefreshCw, Hash, ShieldAlert } from 'lucide-react';
+import { SenderMark } from './AgentIdentityMark';
 import { VerificationSeal } from './StatusBadge';
 import { Disclosure } from './Disclosure';
 import { CopyField } from './DataField';
-import { formatDidAbbreviated } from '@/lib/crypto/did';
+import { GlowSurface, SectionHeader } from './Surface';
+import { describeSender } from '@/lib/senderLabel';
 import { verifyMessage } from '@/lib/crypto/verify';
 import { timeAgo, fullTimestamp } from '@/lib/time';
 import type { TechnocoreClient } from '@/lib/client';
 import type { Identity } from '@/lib/identity';
-import type { RoomInfo } from '@/types/technocore';
+import type { AgentContact, RoomInfo } from '@/types/technocore';
 import type { VerifiedMessage } from '@/hooks/useMailbox';
 
 interface RoomsTabProps {
   client: TechnocoreClient;
   identity: Identity | null;
   rooms: RoomInfo[];
+  /** Saved agents, so a writer you already know reads as a name, not a hash. */
+  contacts: AgentContact[];
   onOpenCompose: (room?: string) => void;
   onInspectMessage: (msg: VerifiedMessage, room: string) => void;
   onCopyText: (text: string, label: string) => void;
   copiedKey: string | null;
 }
+
+const PRIMARY_BTN =
+  'press inline-flex items-center gap-1.5 px-3.5 py-2 min-h-11 sm:min-h-9 rounded-md bg-accent text-on-accent text-xs font-semibold hover:bg-accent/85 active:bg-accent/75';
+const QUIET_BTN =
+  'press inline-flex items-center gap-1.5 px-3 py-2 min-h-11 sm:min-h-9 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2';
 
 /** Activity in words. `idle_seconds` is how long since the room last changed. */
 function describeIdle(idleSeconds?: number): string {
@@ -41,10 +41,71 @@ function describeIdle(idleSeconds?: number): string {
   return `${Math.round(idleSeconds / 86400)}d ago`;
 }
 
+/** The same `idle_seconds`, as one of three states you can see at a glance. */
+type RoomPulse = 'live' | 'recent' | 'quiet' | 'unknown';
+
+function roomPulse(idleSeconds?: number): RoomPulse {
+  if (idleSeconds === undefined) return 'unknown';
+  if (idleSeconds < 90) return 'live';
+  if (idleSeconds < 3600) return 'recent';
+  return 'quiet';
+}
+
+const PULSE_DOT: Record<Exclude<RoomPulse, 'unknown'>, string> = {
+  live: 'bg-success',
+  recent: 'bg-accent',
+  quiet: 'bg-line-strong',
+};
+
+/** The dot is a colour, so the same state also has to reach a screen reader. */
+const PULSE_LABEL: Record<Exclude<RoomPulse, 'unknown'>, string> = {
+  live: 'Active now',
+  recent: 'Active recently',
+  quiet: 'Quiet',
+};
+
+/**
+ * A room, made recognisable.
+ *
+ * Rooms are names on a server, not keys, so this is a plain glyph plus that
+ * room's real activity — deliberately *not* the deterministic identity mark an
+ * agent gets. A cryptographic-looking mark on a first-come room name would imply
+ * somebody owned it. A room the directory says nothing about gets no dot at all
+ * rather than an invented one.
+ *
+ * Only the room you are reading gets an animated dot. Technocore's directory
+ * reports almost every listed room as active, so pulsing all of them at once
+ * would be fifty competing animations that say nothing — §9's "do not use
+ * constant distracting animation", found by looking at the real payload.
+ */
+const RoomGlyph: React.FC<{ active: boolean; pulse: RoomPulse; size?: number }> = ({
+  active,
+  pulse,
+  size = 28,
+}) => (
+  <span
+    className={`relative inline-flex items-center justify-center rounded-lg border shrink-0 transition-colors ${
+      active ? 'bg-accent-tint border-accent/40 text-accent' : 'bg-surface-2 border-line text-ink-4'
+    }`}
+    style={{ width: size, height: size }}
+    aria-hidden="true"
+  >
+    <Hash style={{ width: Math.round(size * 0.46), height: Math.round(size * 0.46) }} />
+    {pulse !== 'unknown' && (
+      <span
+        className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ring-2 ring-surface ${
+          PULSE_DOT[pulse]
+        } ${active && pulse === 'live' ? 'live-dot' : ''}`}
+      />
+    )}
+  </span>
+);
+
 export const RoomsTab: React.FC<RoomsTabProps> = ({
   client,
   identity,
   rooms,
+  contacts,
   onOpenCompose,
   onInspectMessage,
   onCopyText,
@@ -127,43 +188,39 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
   const directoryUnavailable = rooms.length === 0;
   const selectedRoomInfo = rooms.find((r) => r.room === selectedRoom || r.name === selectedRoom);
 
+  const selfDid = identity?.did ?? '';
+  const selectedPulse = roomPulse(selectedRoomInfo?.idle_seconds);
+  /* Activity for the stream header, phrased for the state it describes. Empty
+     when the directory has nothing to say about this room — which is the normal
+     case for a room you opened by name. */
+  const selectedActivity =
+    selectedPulse === 'unknown'
+      ? ''
+      : selectedPulse === 'live'
+      ? 'active now'
+      : `last change ${describeIdle(selectedRoomInfo?.idle_seconds)}`;
+
   return (
-    <div className="space-y-4">
-      {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface border border-line rounded-lg p-4 sm:p-5">
-        <div className="flex items-start gap-3 min-w-0">
-          <MessageSquare className="w-4 h-4 text-ink-3 mt-0.5 shrink-0" aria-hidden="true" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-medium text-ink">Rooms</h2>
-              <span className="font-mono text-xs px-2 py-0.5 rounded bg-surface-2 text-accent border border-line">
-                #{selectedRoom}
-              </span>
-            </div>
-            <p className="text-xs text-ink-3 mt-0.5 leading-relaxed">
-              Shared rooms on Technocore. Anything you send is signed as your agent, so others
-              can check who wrote it.
-            </p>
-          </div>
-        </div>
+    <div className="space-y-4 sm:space-y-5">
+      <SectionHeader
+        as="h1"
+        eyebrow="Shared channels"
+        title="Rooms"
+        description="Open rooms on Technocore. Anything you send is signed as your agent, so anyone reading it can check who wrote it."
+        actions={
+          <button type="button" onClick={() => onOpenCompose(selectedRoom)} className={PRIMARY_BTN}>
+            <Send className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate max-w-[13ch]">Send to #{selectedRoom}</span>
+          </button>
+        }
+      />
 
-        <button
-          onClick={() => onOpenCompose(selectedRoom)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-accent text-on-accent text-xs font-semibold transition-colors hover:bg-accent/85 self-start sm:self-auto shrink-0"
-        >
-          <Send className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>Send to #{selectedRoom}</span>
-        </button>
-      </div>
-
-      {/* Main Split Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column: Room Browser (4 cols) */}
+        {/* ── Left: pick a room ─────────────────────────────────────────────── */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Custom Room Input */}
           <form
             onSubmit={handleCustomRoomSubmit}
-            className="p-3 bg-surface border border-line rounded-lg flex items-center gap-2"
+            className="anim-rise surface-raised border border-line rounded-xl pl-3 pr-2 py-2 flex items-center gap-2"
           >
             <Hash className="w-4 h-4 text-ink-4 shrink-0" aria-hidden="true" />
             <input
@@ -176,30 +233,37 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
             />
             <button
               type="submit"
-              className="px-2.5 py-1 rounded bg-surface-2 hover:bg-surface-3 text-xs text-accent font-medium border border-line transition-colors"
+              className="press px-2.5 py-1.5 min-h-9 sm:min-h-0 rounded bg-surface-2 hover:bg-surface-3 text-xs text-accent font-medium border border-line shrink-0"
             >
               Open
             </button>
           </form>
 
-          {/* Room Directory List */}
-          <div className="bg-surface border border-line rounded-lg overflow-hidden flex flex-col h-[420px] lg:h-[560px]">
-            <div className="p-3 border-b border-line bg-surface-2/50 flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-ink-4" aria-hidden="true" />
+          <GlowSurface
+            variant="outlined"
+            className="anim-rise overflow-hidden flex flex-col h-[420px] lg:h-[560px]"
+          >
+            <div className="px-3 py-2 border-b border-line flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-ink-4 shrink-0" aria-hidden="true" />
               <input
                 type="search"
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search rooms…"
                 aria-label="Search rooms"
-                className="w-full bg-transparent py-2 min-h-11 sm:min-h-6 sm:py-0 text-xs text-ink placeholder:text-ink-4 focus:outline-none"
+                className="w-full min-w-0 bg-transparent py-2 min-h-11 sm:min-h-6 sm:py-0 text-xs text-ink placeholder:text-ink-4 focus:outline-none"
               />
+              {rooms.length > 0 && (
+                <span className="shrink-0 font-mono text-[10px] text-ink-4 tabular-nums">
+                  {filteredRooms.length}/{rooms.length}
+                </span>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-line">
               {directoryUnavailable && (
                 <div className="px-4 py-8 flex flex-col items-center text-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-surface-2 border border-line flex items-center justify-center">
                     <Hash className="w-4 h-4 text-ink-3" aria-hidden="true" />
                   </div>
                   <div className="space-y-1">
@@ -215,7 +279,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                       type="button"
                       onClick={() => setSelectedRoom(seedRoom)}
                       aria-current={selectedRoom === seedRoom ? 'true' : undefined}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2 transition-colors"
+                      className={QUIET_BTN}
                     >
                       <Hash className="w-3.5 h-3.5 text-accent shrink-0" aria-hidden="true" />
                       <span className="font-mono">{seedRoom}</span>
@@ -224,35 +288,56 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                 </div>
               )}
 
-              {filteredRooms.map((r) => (
-                <button
-                  key={r.room}
-                  type="button"
-                  onClick={() => setSelectedRoom(r.room)}
-                  aria-current={selectedRoom === r.room ? 'true' : undefined}
-                  className={`w-full text-left p-3 cursor-pointer transition-colors flex items-center justify-between gap-2 ${
-                    selectedRoom === r.room
-                      ? 'bg-surface-3/70 border-l-2 border-accent'
-                      : 'hover:bg-surface-2/50'
-                  }`}
-                >
-                  <div className="space-y-0.5 min-w-0 pr-2">
-                    <div className="flex items-center gap-2">
-                      <Hash className="w-3.5 h-3.5 text-ink-4 shrink-0" aria-hidden="true" />
-                      <span className="font-mono text-xs text-ink truncate">{r.name}</span>
-                    </div>
-                    {r.topic && <p className="text-[10px] text-ink-4 truncate">{r.topic}</p>}
-                  </div>
-                  {r.idle_seconds !== undefined ? (
-                    <span
-                      className="text-[10px] text-ink-4 shrink-0 tabular-nums"
-                      title="When this room last changed"
-                    >
-                      {describeIdle(r.idle_seconds)}
+              {filteredRooms.map((r, i) => {
+                const active = selectedRoom === r.room;
+                const pulse = roomPulse(r.idle_seconds);
+
+                return (
+                  <button
+                    key={r.room}
+                    type="button"
+                    onClick={() => setSelectedRoom(r.room)}
+                    aria-current={active ? 'true' : undefined}
+                    style={{ '--i': Math.min(i, 8) } as React.CSSProperties}
+                    /* §25's active state: an accent rail and a surface step, so
+                       the room you are reading is obvious without a heavy box. */
+                    className={`press anim-row anim-stagger w-full text-left px-3 py-2.5 flex items-center gap-2.5 ${
+                      active ? 'edge-accent bg-surface-2' : 'hover:bg-surface-2/60'
+                    }`}
+                  >
+                    <RoomGlyph active={active} pulse={pulse} />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block font-mono text-xs truncate ${
+                          active ? 'text-ink' : 'text-ink-2'
+                        }`}
+                      >
+                        {r.name}
+                      </span>
+                      {r.topic && (
+                        <span className="block text-[10px] text-ink-4 truncate">{r.topic}</span>
+                      )}
                     </span>
-                  ) : null}
-                </button>
-              ))}
+                    {pulse !== 'unknown' && (
+                      <>
+                        <span className="sr-only">{PULSE_LABEL[pulse]}</span>
+                        {/* Only worth words when the room has gone off the boil.
+                            "active now" on every row is fifty copies of the same
+                            sentence, and the dot already says it. */}
+                        {pulse !== 'live' && (
+                          <span
+                            className="shrink-0 text-[10px] tabular-nums text-ink-4"
+                            title="When this room last changed"
+                            aria-hidden="true"
+                          >
+                            {describeIdle(r.idle_seconds)}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </button>
+                );
+              })}
 
               {!directoryUnavailable && filteredRooms.length === 0 && (
                 <p className="p-4 text-[11px] text-ink-3 leading-relaxed">
@@ -260,28 +345,37 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                 </p>
               )}
             </div>
-          </div>
+          </GlowSurface>
         </div>
 
-        {/* Right Column: Room Stream (8 cols) */}
-        <div className="lg:col-span-8 bg-surface border border-line rounded-lg overflow-hidden flex flex-col min-h-[420px] lg:h-[620px]">
-          <div className="p-4 border-b border-line bg-surface-2/50 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <Hash className="w-4 h-4 text-accent shrink-0" aria-hidden="true" />
-              <span className="font-mono text-xs font-semibold text-ink truncate">
-                {selectedRoom}
-              </span>
-              <span className="text-xs text-ink-3 tabular-nums shrink-0">
-                · {messages.length} loaded
-              </span>
+        {/* ── Right: the room itself ────────────────────────────────────────── */}
+        <GlowSurface
+          variant="accent"
+          className="anim-rise lg:col-span-8 overflow-hidden flex flex-col min-h-[420px] lg:h-[620px]"
+        >
+          <div className="px-4 py-3 border-b border-line flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <RoomGlyph active pulse={selectedPulse} size={32} />
+              <div className="min-w-0">
+                <h2 className="font-mono text-sm font-semibold text-ink truncate">
+                  #{selectedRoom}
+                </h2>
+                <p className="text-[11px] text-ink-4 tabular-nums truncate">
+                  {messages.length} loaded
+                  {selectedActivity && ` · ${selectedActivity}`}
+                </p>
+              </div>
             </div>
             <button
               onClick={() => fetchRoomMessages(selectedRoom)}
               disabled={isLoading}
               aria-label={`Refresh #${selectedRoom}`}
-              className="inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 -mr-1.5 text-ink-3 hover:text-ink hover:bg-surface-3 rounded-md transition-colors disabled:opacity-50 shrink-0"
+              className="press inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 -mr-1.5 text-ink-3 hover:text-ink hover:bg-surface-2 rounded-md disabled:opacity-50 shrink-0"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+              <RefreshCw
+                className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
             </button>
           </div>
 
@@ -292,7 +386,10 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                 <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="space-y-0.5">
                     <dt className="text-[10px] uppercase tracking-wider text-ink-3">Sequence</dt>
-                    <dd className="font-mono text-xs text-ink tabular-nums" title="Server-assigned height of the newest message in this room">
+                    <dd
+                      className="font-mono text-xs text-ink tabular-nums"
+                      title="Server-assigned height of the newest message in this room"
+                    >
                       {selectedRoomInfo?.last_seq?.toLocaleString('en-US') ?? '—'}
                     </dd>
                   </div>
@@ -331,12 +428,12 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
             </Disclosure>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-line p-2">
+          <div className="flex-1 overflow-y-auto p-2">
             {isLoading ? (
-              <div className="p-4 space-y-3" aria-label="Loading room messages">
+              <div className="p-2 space-y-3" aria-label="Loading room messages">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <div key={i} className="flex items-start gap-3 p-2">
-                    <div className="skeleton w-7 h-7 rounded-full shrink-0" />
+                    <div className="skeleton w-[30px] h-[30px] rounded-lg shrink-0" />
                     <div className="flex-1 space-y-2">
                       <div className="skeleton h-3 w-1/4 rounded" />
                       <div className="skeleton h-3 w-3/4 rounded" />
@@ -345,22 +442,24 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                 ))}
               </div>
             ) : error ? (
-              <div className="p-12 text-center text-xs font-mono space-y-3" role="alert">
-                <ShieldAlert className="w-8 h-8 mx-auto text-danger mb-2" />
-                <p className="text-ink-2 font-semibold">Failed to read #{selectedRoom}</p>
-                <p className="text-danger break-all px-4">{error}</p>
+              <div className="px-6 py-12 text-center space-y-3" role="alert">
+                <ShieldAlert className="w-8 h-8 mx-auto text-danger" aria-hidden="true" />
+                <p className="text-sm font-semibold text-ink-2">
+                  Failed to read <span className="font-mono">#{selectedRoom}</span>
+                </p>
+                <p className="text-xs font-mono text-danger break-all px-4">{error}</p>
                 <button
                   onClick={() => fetchRoomMessages(selectedRoom)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink mt-1 transition-colors"
+                  className={`${QUIET_BTN} mx-auto`}
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Retry</span>
                 </button>
               </div>
             ) : messages.length === 0 ? (
               <div className="px-6 py-14 flex flex-col items-center text-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-surface-2 border border-line flex items-center justify-center">
-                  <Hash className="w-5 h-5 text-ink-3" />
+                <div className="w-11 h-11 rounded-xl bg-surface-2 border border-line flex items-center justify-center">
+                  <Hash className="w-5 h-5 text-ink-3" aria-hidden="true" />
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-ink-2">
@@ -371,30 +470,38 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                     so anyone reading it can check that it came from you.
                   </p>
                 </div>
-                <button
-                  onClick={() => onOpenCompose(selectedRoom)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2 transition-colors"
-                >
+                <button onClick={() => onOpenCompose(selectedRoom)} className={QUIET_BTN}>
                   <Send className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Send the first message</span>
                 </button>
               </div>
             ) : (
-              messages.map((msg) => {
-                const isDid = msg.from.startsWith('did:key:');
+              messages.map((msg, i) => {
+                /* Who wrote this, in the most useful terms available: your own
+                   messages say "You", a saved agent says its nickname, and
+                   anyone else stays an abbreviated DID. Nothing is inferred
+                   beyond what the saved list and your own key can answer. */
+                const writer = describeSender(msg.from, contacts, selfDid);
+
                 return (
                   <div
                     key={msg.seq}
-                    className="p-3.5 hover:bg-surface-2/40 rounded-md transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    style={{ '--i': Math.min(i, 8) } as React.CSSProperties}
+                    className={`anim-row anim-stagger rounded-lg p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-3 transition-colors ${
+                      writer.isSelf ? 'bg-surface-2/60' : 'hover:bg-surface-2/40'
+                    }`}
                   >
                     <div className="flex items-start gap-3 min-w-0">
-                      <Identicon did={msg.from} size={28} className="mt-0.5 shrink-0 rounded" />
-                      <div className="space-y-1 min-w-0">
+                      <SenderMark did={msg.from} isDid={writer.isDid} size={30} />
+                      <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-medium text-ink">
-                            {isDid ? formatDidAbbreviated(msg.from) : msg.from}
+                          <span className="text-xs font-semibold text-ink truncate max-w-[18ch] sm:max-w-none">
+                            {writer.name}
                           </span>
-                          <VerificationSeal verification={msg.verification} isDidSender={isDid} />
+                          <VerificationSeal
+                            verification={msg.verification}
+                            isDidSender={writer.isDid}
+                          />
                           <span
                             className="text-[11px] text-ink-4 tabular-nums"
                             title={fullTimestamp(msg.ts)}
@@ -402,13 +509,18 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                             {timeAgo(msg.ts)}
                           </span>
                         </div>
+                        {writer.shortDid && (
+                          <p className="font-mono text-[10px] text-ink-4 truncate">
+                            {writer.shortDid}
+                          </p>
+                        )}
                         <p className="text-xs text-ink-2 break-words leading-relaxed">{msg.text}</p>
                       </div>
                     </div>
 
                     <button
                       onClick={() => onInspectMessage(msg, selectedRoom)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 hover:text-ink border border-line transition-colors shrink-0 self-end sm:self-center"
+                      className="press inline-flex items-center gap-1 px-2.5 py-1.5 min-h-9 sm:min-h-0 rounded bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 hover:text-ink border border-line shrink-0 self-end sm:self-auto"
                       title="Open the protocol inspector for this message"
                     >
                       <Cpu className="w-3 h-3 text-ink-4" aria-hidden="true" />
@@ -419,7 +531,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
               })
             )}
           </div>
-        </div>
+        </GlowSurface>
       </div>
     </div>
   );
