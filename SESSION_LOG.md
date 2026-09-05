@@ -50,6 +50,11 @@ behaviour, the API proxy and persistence are byte-for-byte identical. Only what 
 
 * **§40 gate green:** `npx tsc --noEmit` 0 errors · `npx vitest run` 18/18 across 5 files (no test file
   edited) · `npm run build` succeeded.
+* **Export dialog tap targets re-measured after the fix**, at 360px: gate = Close 44×44, Cancel 73×44,
+  Export Identity 116×44; step 2 = Close 44×44, Reveal 56×44, both Copy 48×44, Done 64×44. Was 38/36/34px.
+  Read `offsetHeight`, not `getBoundingClientRect` — a hidden preview tab throttles animations, so the
+  panel's entrance transform (`scale(.985)`) freezes at frame one and rects come back 1.5% short.
+  Both export screens still reported `masked: true` and no key material on screen; Reveal was never clicked.
 * **Contrast audited in-browser, 0 failures**, dark *and* light, at 360×740, transitions disabled: Rooms 333
   elements · Overview 61 · Inbox 27 (262 when populated) · Contacts 33 · Identity 48 (63 with Advanced open)
   · all four Inspector tabs · Verifier · Compose · both export screens. `docOverflow: 0` everywhere.
