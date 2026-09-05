@@ -151,13 +151,13 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="compose-title"
-        className="relative w-full max-w-xl bg-surface border border-line-2 rounded-lg overflow-hidden flex flex-col"
+        className="modal-panel relative w-full max-w-xl surface-raised border border-line-2 rounded-xl overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-surface-2/50">
@@ -182,8 +182,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSend} className="p-6 space-y-5">
+        {/* Form. Scrolls inside the panel so a 360px-tall phone can still reach
+            Send — the header above it stays put. */}
+        <form onSubmit={handleSend} className="p-6 space-y-5 overflow-y-auto">
           {/* Who this will be signed as — reassurance, not a protocol readout */}
           <div className="p-3 rounded-md bg-bg/40 border border-line flex items-center justify-between gap-3">
             <div className="space-y-0.5 min-w-0">

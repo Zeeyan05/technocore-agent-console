@@ -44,13 +44,13 @@ export const ExportSeedModal: React.FC<ExportSeedModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-seed-title"
-        className="relative w-full max-w-lg bg-surface border border-line-2 rounded-lg overflow-hidden flex flex-col"
+        className="modal-panel relative w-full max-w-lg surface-raised border border-line-2 rounded-xl overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-surface-2/50">
@@ -68,14 +68,15 @@ export const ExportSeedModal: React.FC<ExportSeedModalProps> = ({
           <button
             onClick={handleClose}
             aria-label="Close identity export"
-            className="p-1.5 rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors"
+            className="press inline-flex items-center justify-center p-1.5 min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-5">
+        {/* Content. Scrolls inside the panel so the warning copy plus the actions
+            below it stay reachable on a short screen. */}
+        <div className="p-6 space-y-5 overflow-y-auto">
           {!confirmed ? (
             <div className="space-y-4">
               <div className="p-4 rounded-lg bg-warning-tint border border-warning/30 space-y-2 text-xs leading-relaxed">
@@ -95,15 +96,18 @@ export const ExportSeedModal: React.FC<ExportSeedModalProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Both controls get the app's phone tap height. Cancel must never
+                    be the smaller target of the two on the dialog that hands over
+                    secret material. */}
                 <button
                   onClick={handleClose}
-                  className="px-4 py-2.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2 transition-colors"
+                  className="press px-4 py-2.5 min-h-11 sm:min-h-9 rounded-md bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-2 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => setConfirmed(true)}
-                  className="px-4 py-2.5 rounded-md bg-warning text-on-accent text-xs font-semibold transition-colors hover:bg-warning/85"
+                  className="press px-4 py-2.5 min-h-11 sm:min-h-9 rounded-md bg-warning text-on-accent text-xs font-semibold transition-colors hover:bg-warning/85"
                 >
                   Export Identity
                 </button>
@@ -175,7 +179,7 @@ export const ExportSeedModal: React.FC<ExportSeedModalProps> = ({
               <div className="pt-2 flex justify-end">
                 <button
                   onClick={handleClose}
-                  className="px-4 py-2 rounded-md bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 border border-line transition-colors"
+                  className="press px-4 py-2 min-h-11 sm:min-h-9 rounded-md bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-2 border border-line transition-colors"
                 >
                   Done
                 </button>
