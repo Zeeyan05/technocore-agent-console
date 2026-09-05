@@ -28,6 +28,13 @@
   --color-accent: #38bdf8;
   --color-accent-tint: rgba(56, 189, 248, 0.1);
 
+  /* Identity violet — the second accent, reserved for *identity* (agent marks,
+     identity surfaces, the DID). Never used for status or verification, so the
+     two accents never compete. 5.99:1 on --color-surface-3, so it is safe for
+     the small labels it carries, not just for decoration. */
+  --color-identity: #a78bfa;
+  --color-identity-tint: rgba(167, 139, 250, 0.12);
+
   /* Ink that sits on a saturated fill (accent / warning / danger buttons).
      Kept as its own token because it must invert with the theme: near-black on
      the light dark-mode fills, white on the darker light-mode fills. */
@@ -44,6 +51,34 @@
   /* Fonts (loaded via next/font in layout.tsx) */
   --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Elevation. Real depth comes from a shadow ramp plus a 1px top highlight,
+     not from translucency — see the `.surface-*` classes below. */
+  --shadow-lift-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lift-2: 0 4px 16px -4px rgba(0, 0, 0, 0.55);
+  --shadow-lift-3: 0 12px 32px -8px rgba(0, 0, 0, 0.65);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion system. One place for every duration and curve so the whole app moves
+   with the same rhythm. Fast and precise on purpose: nothing here is a
+   marketing-site animation.
+   --------------------------------------------------------------------------- */
+:root {
+  --dur-1: 120ms; /* press / colour flips */
+  --dur-2: 180ms; /* hover, small state changes */
+  --dur-3: 240ms; /* entrances, expand/collapse */
+  --dur-4: 320ms; /* modals */
+  --ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-spring: cubic-bezier(0.22, 1.28, 0.42, 1);
+
+  /* Ambient environment — the light the interface sits in. */
+  --glow-accent: rgba(56, 189, 248, 0.1);
+  --glow-identity: rgba(167, 139, 250, 0.075);
+  --glow-floor: rgba(56, 189, 248, 0.05);
+  --grid-dot: rgba(255, 255, 255, 0.05);
+  --edge-highlight: rgba(255, 255, 255, 0.045);
 }
 
 *,
@@ -144,13 +179,349 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Ambient environment. Two fixed, non-interactive layers behind everything:
+   a very low-opacity light field (cyan where the system lives, violet near the
+   identity side) and a fine dot grid that fades out before it reaches the
+   content. Meant to be felt, not noticed — and cheap, because it is one
+   painted element with no animation.
+   --------------------------------------------------------------------------- */
+.ambient-light {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(58rem 34rem at 10% -10%, var(--glow-accent), transparent 62%),
+    radial-gradient(46rem 30rem at 92% -2%, var(--glow-identity), transparent 64%),
+    radial-gradient(72rem 38rem at 52% 112%, var(--glow-floor), transparent 66%);
+}
+
+.ambient-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0);
+  background-size: 34px 34px;
+  -webkit-mask-image: radial-gradient(58rem 40rem at 50% -6%, #000 0%, transparent 78%);
+  mask-image: radial-gradient(58rem 40rem at 50% -6%, #000 0%, transparent 78%);
+}
+
+/* ---------------------------------------------------------------------------
+   Surfaces. §29's fix for "everything is a bordered box": a card is a surface
+   with a 1px top highlight and a shadow, and the border is optional. Depth
+   comes from the ramp, not from glass.
+   --------------------------------------------------------------------------- */
+.surface-raised {
+  background-color: var(--color-surface);
+  box-shadow:
+    inset 0 1px 0 0 var(--edge-highlight),
+    var(--shadow-lift-1);
+}
+
+.surface-lift {
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+
+.surface-lift:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 0 var(--edge-highlight),
+    var(--shadow-lift-2);
+}
+
+/* An accent edge: a hairline of coloured light down the leading edge of a
+   selected row or an active surface. Replaces the heavier `border-l-2`. */
+.edge-accent {
+  position: relative;
+}
+.edge-accent::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--color-accent) 18%,
+    var(--color-accent) 82%,
+    transparent
+  );
+}
+
+/* Identity surfaces get the violet wash instead of the cyan one. */
+.wash-identity {
+  background-image: radial-gradient(
+    36rem 18rem at 8% 0%,
+    var(--color-identity-tint),
+    transparent 68%
+  );
+}
+.wash-accent {
+  background-image: radial-gradient(
+    36rem 18rem at 92% 0%,
+    var(--color-accent-tint),
+    transparent 68%
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Entrances. `animation-fill-mode: both` everywhere, so the reduced-motion
+   block below (which collapses duration to 0.01ms) lands on the finished state
+   instead of leaving an invisible element behind.
+   --------------------------------------------------------------------------- */
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes enter-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-rise {
+  animation: enter-rise var(--dur-3) var(--ease-out) both;
+}
+.anim-fade {
+  animation: enter-fade var(--dur-3) var(--ease-out) both;
+}
+.anim-slide-left {
+  animation: enter-slide-left var(--dur-3) var(--ease-out) both;
+}
+
+/* Stagger. Set `--i` on the child (inline style) and the delay follows. Capped
+   in the components at 8 so a long list never waits noticeably. */
+.anim-stagger {
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* ---------------------------------------------------------------------------
+   Modals. Backdrop fades, panel rises and settles — the panel curve overshoots
+   very slightly so it feels physical rather than linear.
+   --------------------------------------------------------------------------- */
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.modal-backdrop {
+  animation: modal-backdrop-in var(--dur-2) var(--ease-out) both;
+}
+
+.modal-panel {
+  animation: modal-panel-in var(--dur-4) var(--ease-spring) both;
+}
+
+/* ---------------------------------------------------------------------------
+   Agent heartbeat. Three intensities on the same dot so the system reads as
+   alive without ever being distracting:
+     .beat-idle    — the slow breath of a healthy connection
+     .beat-poll    — one quiet ring while the mailbox long-poll is open
+     .beat-arrival — one brighter ring when a message actually lands
+   The ring is a ::after pseudo-element, so it never affects layout.
+   --------------------------------------------------------------------------- */
+@keyframes beat-ring {
+  from {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.9);
+  }
+}
+
+.beat {
+  position: relative;
+}
+.beat::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+.beat-idle::after {
+  animation: beat-ring 2.6s var(--ease-out) infinite;
+}
+.beat-poll::after {
+  animation: beat-ring 1.5s var(--ease-out) infinite;
+}
+.beat-arrival::after {
+  animation: beat-ring 700ms var(--ease-out) 2;
+}
+
+/* Expand / collapse. `grid-template-rows: 0fr -> 1fr` animates height without
+   knowing the content height, and the child must own `overflow: hidden`. Used
+   by Disclosure, which still unmounts its children once the transition has
+   finished closing so long hex strings stay out of the tab order. */
+.collapsible {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-3) var(--ease-out);
+}
+.collapsible[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+.collapsible > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* The nav's active pill. One absolutely-positioned element that slides between
+   tabs, rather than a background that blinks on and off. */
+.nav-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0.375rem;
+  background-color: var(--color-surface-2);
+  box-shadow: inset 0 1px 0 0 var(--edge-highlight);
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    width var(--dur-3) var(--ease-out),
+    opacity var(--dur-2) var(--ease-out);
+  pointer-events: none;
+}
+
+/* A verified seal arriving: a short, single confirm. */
+@keyframes seal-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.anim-seal {
+  animation: seal-in var(--dur-3) var(--ease-spring) both;
+}
+
+/* Press feedback. Applied to real buttons only, so a click always registers
+   physically even when the colour change is subtle. */
+.press {
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+.press:active {
+  transform: translateY(1px);
+}
+
+/* The agent identity mark. Each mark is handed only its two hues (as --mk-h1 /
+   --mk-h2, inline); the lightness lives here, so one identity keeps its colour
+   while staying legible on a near-black plate and on a white card. Measured:
+   the primary tone is 8.8:1 on the dark plate and 3.4:1 on the light one — both
+   clear WCAG 1.4.11's 3:1 floor for a meaningful graphic. */
+.mark {
+  --mk-1: hsl(var(--mk-h1) 78% 66%);
+  --mk-2: hsl(var(--mk-h2) 72% 52%);
+  --mk-plate: var(--color-surface-2);
+  --mk-plate-line: rgba(255, 255, 255, 0.07);
+}
+
+/* The outer ring rotates only while the mark is hovered — never on its own. */
+.mark-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 900ms var(--ease-out);
+}
+.mark:hover .mark-ring,
+.mark:focus-visible .mark-ring {
+  transform: rotate(24deg);
+}
+
+/* A row arriving in a live list. */
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-row {
+  animation: row-in var(--dur-3) var(--ease-out) both;
+}
+
+/* A live value that just changed — used on the latency readout so a number
+   moving is legible rather than a silent swap. */
+@keyframes value-tick {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-tick {
+  animation: value-tick var(--dur-3) var(--ease-out) both;
+}
+
+/* ---------------------------------------------------------------------------
    Light theme. Every component paints with the tokens above, so the whole app
    re-themes by re-pointing those variables — no per-component light variants.
    Declared unlayered so it wins over Tailwind's `@layer theme` defaults.
 
-   Saturated fills drop to the 700 range here so white ink clears 4.5:1 on them,
-   and the ink ramp is chosen for contrast on #ffffff cards: ink 18.6:1,
-   ink-2 8.6:1, ink-3 6.0:1, ink-4 4.8:1 — all measured in the browser.
+   Saturated fills drop to the 700 range here so white ink clears 4.5:1 on them.
+   The ink ramp is pinned to --color-surface-2 (#f1f3f7), not to #ffffff: every
+   tier of it is used on those tinted cards as well as on white, and pinning to
+   white alone put ink-4 at 4.35:1 where it actually lands. Measured in the
+   browser on #f1f3f7 — ink 16.7:1, ink-2 7.8:1, ink-3 5.4:1, ink-4 4.6:1.
    --------------------------------------------------------------------------- */
 @media (prefers-color-scheme: light) {
   :root {
@@ -167,14 +538,35 @@ body {
     --color-ink: #10131a;
     --color-ink-2: #454c5a;
     --color-ink-3: #5c6472;
-    --color-ink-4: #6b7280;
+    --color-ink-4: #666e7b;
 
     --color-accent: #0369a1;
     --color-accent-tint: rgba(3, 105, 161, 0.08);
     --color-on-accent: #ffffff;
 
-    --color-success: #047857;
-    --color-success-tint: rgba(4, 120, 87, 0.1);
+    /* Identity violet, light: 7.13:1 on white, 5.81:1 on --color-surface-3. */
+    --color-identity: #6d28d9;
+    --color-identity-tint: rgba(109, 40, 217, 0.07);
+
+    /* The ambient field has to be far weaker on a light page — the same opacity
+       that reads as "barely there" on near-black reads as a coloured stain on
+       #f6f7fa. Highlights invert: on light surfaces the 1px top edge is white. */
+    --glow-accent: rgba(3, 105, 161, 0.055);
+    --glow-identity: rgba(109, 40, 217, 0.045);
+    --glow-floor: rgba(3, 105, 161, 0.03);
+    --grid-dot: rgba(16, 19, 26, 0.05);
+    --edge-highlight: rgba(255, 255, 255, 0.9);
+
+    --shadow-lift-1: 0 1px 2px rgba(16, 19, 26, 0.06);
+    --shadow-lift-2: 0 4px 16px -4px rgba(16, 19, 26, 0.1);
+    --shadow-lift-3: 0 12px 32px -8px rgba(16, 19, 26, 0.14);
+
+    /* Green is the one status colour that also has to be legible *on its own
+       tint* — the Verified seal is success ink inside a success wash. At #047857
+       that pairing measured 4.29:1; this is the same hue two steps darker, which
+       clears 4.5:1 on the tint (5.1:1) and on every surface. */
+    --color-success: #046b4e;
+    --color-success-tint: rgba(4, 107, 78, 0.1);
     --color-warning: #854d0e;
     --color-warning-tint: rgba(133, 77, 14, 0.1);
     --color-danger: #b91c1c;
@@ -196,14 +588,31 @@ body {
   .modal-backdrop {
     background: rgba(16, 19, 26, 0.35);
   }
+
+  /* The identity mark keeps its hue and drops its lightness, so the same agent
+     is recognisably the same agent in both themes. */
+  .mark {
+    --mk-1: hsl(var(--mk-h1) 72% 44%);
+    --mk-2: hsl(var(--mk-h2) 68% 34%);
+    --mk-plate-line: rgba(16, 19, 26, 0.09);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Pseudo-elements are not matched by `*`, and the heartbeat rings live on
+     ::after — so they have to be named explicitly or they keep pulsing. */
   .live-dot,
   .skeleton,
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* A ring frozen at frame one would sit on screen as a solid disc. */
+  .beat::after {
+    display: none !important;
   }
 }

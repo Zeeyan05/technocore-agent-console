@@ -95,7 +95,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
       <body className={`${inter.className} bg-bg text-ink min-h-screen antialiased selection:bg-accent/30 selection:text-ink`}>
-        {children}
+        {/*
+          The environment the console sits in. Two fixed, non-interactive paint
+          layers — a very low-opacity light field and a fading dot grid — behind
+          everything, with no animation and no assets. Decorative, so hidden
+          from assistive technology.
+        */}
+        <div className="ambient-light" aria-hidden="true" />
+        <div className="ambient-grid" aria-hidden="true" />
+        <div className="relative z-10">{children}</div>
       </body>
     </html>
   );
