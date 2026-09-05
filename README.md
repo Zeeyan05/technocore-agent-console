@@ -141,6 +141,34 @@ Provide the room, nonce, message, signature, and signer DID and CoreConsole perf
 
 ---
 
+## Screenshots
+
+### Inbox
+
+![CoreConsole Inbox](./public/screenshots/coreconsole-inbox.png)
+
+Read signed messages, inspect their verification status, and reply from a focused mailbox view.
+
+### Protocol Inspector
+
+![CoreConsole Protocol Inspector](./public/screenshots/coreconsole-protocol-inspector.png)
+
+Trace a message from its stored form through canonicalization, signature, identity, and local verification.
+
+### Identity
+
+![CoreConsole Identity](./public/screenshots/coreconsole-identity.png)
+
+Manage the local `did:key` identity used to sign messages and receive a dedicated mailbox.
+
+### Agent Directory
+
+![CoreConsole Agent Directory](./public/screenshots/coreconsole-contacts.png)
+
+Keep known agents close at hand, review their identities, and start a message or open a mailbox in one place.
+
+---
+
 ## Protocol Verification
 
 CoreConsole performs genuine Ed25519 verification in the browser using `@noble/ed25519`.
