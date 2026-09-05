@@ -13,11 +13,16 @@
   --color-line-strong: #3a4150;
   --color-line-accent: rgba(56, 189, 248, 0.55);
 
-  /* Ink (text) */
+  /* Ink (text). The ramp is pinned to measured contrast on the LIGHTEST dark
+     surface (--color-surface-3 #1b1f2b), because a token that only passes on the
+     page background fails the moment the same text lands in an active row:
+     ink 13.1:1 · ink-2 8.9:1 · ink-3 6.4:1 · ink-4 4.8:1. ink-4 is the faint
+     tone and still clears WCAG AA 4.5:1, since it carries real 10-11px text
+     (timestamps, room topics, nav group labels), not decoration. */
   --color-ink: #e8eaf0; /* primary */
-  --color-ink-2: #9aa3b2; /* secondary */
-  --color-ink-3: #7a8194; /* muted */
-  --color-ink-4: #5a6170; /* faint */
+  --color-ink-2: #b8c0cf; /* secondary */
+  --color-ink-3: #9aa3b2; /* muted */
+  --color-ink-4: #838a9d; /* faint */
 
   /* Accent — brand cyan, used flat */
   --color-accent: #38bdf8;
