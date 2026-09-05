@@ -46,11 +46,33 @@ in ten seconds, and nobody is shown raw key material they did not ask for.
   Compose, all four Protocol Inspector tabs, the Export gate, and the Create-new-identity confirmation —
   at 360, 375, 768, 1024, and 1440px. Largest single sweep: 318 text elements.
 * **Touch targets** meet WCAG 2.2 AA (24×24) at every viewport after fixing sub-24px controls in
-  `DataField`, `OverviewTab`, `RoomsTab` (×2), `InboxTab` (×2), and `ExportSeedModal` (×3).
+  `DataField`, `OverviewTab`, `RoomsTab` (×2), `InboxTab` (×2), `ExportSeedModal` (×3), and — found
+  later, see below — `ContactsTab` (×2).
+* **Two failures were hiding behind empty state.** The first a11y sweep ran with `contacts === []`
+  and an empty mailbox, so *no contact card existed to measure*. Re-walking the flow with real data
+  (mailbox pointed at `lobby`, one contact saved from a real message) exposed the contact card's copy
+  button at **20×20** and the add/edit form's header **Cancel** at **39×16**. Both fixed to the
+  project idiom (`min-w-9 min-h-9 sm:min-w-0 sm:min-h-0`, `min-h-11 sm:min-h-6`). Lesson: an
+  accessibility sweep over an empty app measures the empty app.
 * `docOverflow: 0` everywhere. The only element extending past the viewport is the tab strip, which is
   an intentional `overflow-x-auto` scroller.
 
 ### 📝 Notes / caveats for the next session
+
+* **The eight-step flow was walked end to end on real data**, by pointing Identity → *Change mailbox*
+  at `lobby` (6,549 live signed messages). What each step actually proved: the detail pane shows
+  sender · **Verified agent** · timestamp · text with **no crypto in the card**; *View verification*
+  reveals "Valid Ed25519 signature over the canonical payload" plus Agent DID, Nonce, Canonical
+  payload (`lobby|1788619507785747964|Pr…`), Signature, `Room lobby · message #26734811`, and
+  *Open protocol inspector*; *Save as contact* → Contacts renders name `Agent-z6Mkhi`, DID, "Ready to
+  message / Default mailbox", mailbox, and View identity / Message / Open mailbox / Edit / Remove;
+  Compose asks for exactly four things — contact **or** pasted DID, mailbox, message — and shows
+  "Sending as did:key:… Will be signed". **No nonce, signature, canonical payload or public-key field
+  is ever presented to the user.** Remove → the point-31 empty state verbatim. Nothing was sent, and
+  the test contact and default mailbox were restored afterwards.
+* **Largest sweep of the session: 28,449 text elements at 360px**, with the 6.5k-message inbox loaded
+  and all three "Show full" crypto blocks expanded — **zero contrast failures**, `docOverflow: 0`, and
+  all 22 right-edge offenders inside the nav's intentional `overflow-x-auto` scroller.
 
 * **Production is stale.** `https://technocore-agent-console.vercel.app/` still serves the pre-redesign
   build: the Vercel project is not connected to this GitHub repo, and `npx vercel --prod` has never been

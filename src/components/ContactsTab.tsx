@@ -87,7 +87,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-ink-3 hover:text-ink transition-colors"
+          className="inline-flex items-center justify-center -mr-2 rounded px-2 py-2 min-h-11 sm:min-h-6 sm:py-1 text-xs text-ink-3 hover:text-ink transition-colors"
         >
           Cancel
         </button>
@@ -413,14 +413,14 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({
                       </span>
                       <button
                         onClick={() => onCopyText(contact.did, `${contact.nickname} identity`)}
-                        className="p-1 rounded text-ink-4 hover:text-accent transition-colors shrink-0"
+                        className="inline-flex items-center justify-center p-1.5 min-w-9 min-h-9 sm:min-w-0 sm:min-h-0 rounded text-ink-4 hover:text-accent transition-colors shrink-0"
                         aria-label={`Copy the identity of ${contact.nickname}`}
                         title="Copy full identity"
                       >
                         {copiedKey === `${contact.nickname} identity` ? (
-                          <Check className="w-3 h-3 text-success" aria-hidden="true" />
+                          <Check className="w-3.5 h-3.5 text-success" aria-hidden="true" />
                         ) : (
-                          <Copy className="w-3 h-3" aria-hidden="true" />
+                          <Copy className="w-3.5 h-3.5" aria-hidden="true" />
                         )}
                       </button>
                     </div>
