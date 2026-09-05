@@ -4,6 +4,65 @@
 
 ---
 
+## 2026-09-06 — Repository presentation: README, screenshots, de-Claude history rewrite
+
+🎯 **Focus:** GitHub-facing polish only. No application code was touched in any commit below — the diffs
+are `README.md`, five PNGs under `public/screenshots/`, `.gitignore`, and this log. Every push was gated
+on `npx tsc --noEmit` (exit 0), `npx vitest run` (18/18 across 5 files) and `npm run build` (exit 0).
+
+### ✅ Done
+
+* **README rewritten as a product-first overview** (`320ae78`). What CoreConsole is → why it exists →
+  capabilities → protocol verification → non-custodial identity → inspector → architecture → error
+  handling → accessibility → testing → getting started → limitations → V1 scope. Byte-level protocol
+  detail now sits below the product story instead of leading with it.
+* **Screenshot gallery** (`b62fbf8`): hero plus Inbox, Protocol Inspector, Identity and Agent Directory,
+  all genuinely 2560×1440 — dimensions read out of each PNG's IHDR header rather than assumed. All five
+  README paths resolve, GitHub serves all five as `200 image/png` at matching byte counts, and Vercel
+  serves them from production.
+* **`Co-Authored-By: Claude` trailers removed from the entire history.** 12 trailers across 30 commits,
+  stripped with `git filter-branch --msg-filter`, then force-pushed. GitHub reads that trailer and was
+  listing `claude` in the repository's Contributors panel. Proved content-neutral *before* pushing: 30
+  commits before and after, HEAD tree `af3dd1c…` identical both times, all 30 tree hashes piped through
+  `git hash-object` to the same digest, `git diff --stat backup..HEAD` empty, author unchanged.
+* **Local agent tooling untracked** (`c3ea4f0`): `AGENTS.md`, `CLAUDE.md` and `.claude/launch.json` are
+  `git rm --cached`-ed and gitignored — still on disk, still working locally, gone from the file browser.
+  `next dev` rewrites `AGENTS.md` and `CLAUDE.md` on every start
+  (`node_modules/next/dist/server/lib/generate-agent-files.js`), so ignoring them is what keeps the tree
+  clean; committing them was the previous workaround for the same problem.
+
+### 🔴 One real incident, and how it was fixed
+
+The force-push **deleted a commit Zack had authored in the GitHub web UI** (`b8dedf5`, the README hero
+screenshot). `--force-with-lease` did not prevent it: a background `git fetch` had already fast-forwarded
+`refs/remotes/origin/master` onto that commit, so the lease matched and the overwrite was allowed.
+
+Recovered by cherry-picking `b8dedf5` onto the rewritten tip — its parent was the pre-rewrite twin of that
+tip and the two trees were byte-identical, so it applied with zero conflicts and kept the original author,
+author date and tree hash (`ac875bb…`).
+
+**Rule now recorded globally:** run `git fetch origin` and check `git rev-list --count HEAD..origin/master`
+before any rewrite, reset or force-push. A clean `git status` and a successful normal push do **not** mean
+the remote is where you last saw it.
+
+### 📝 Notes
+
+* Every commit SHA in the history changed — that is what a rewrite does. Old → new for the visual pass:
+  `8f736c3`→`189a257`, `9a3cb59`→`be28bc9`, `4a26929`→`d18584a`, `c5dbfd4`→`981bdf8`,
+  `0b1d2b3`→`87dfe8f`, `f67b0c6`→`320ae78`.
+* `3952dfb` "Add CoreConsole screenshot gallery" was authored in a separate workspace clone on top of the
+  *old* history, so it could not be pushed directly — its parent no longer existed on `master`. Replayed
+  onto the clean tip as `b62fbf8`: identical tree (`be44470f…`), identical message, original author and
+  author date. Pushing the original branch instead would have resurrected all 12 trailers.
+* Local-only tag `backup-pre-claude-strip` → `b8dedf5` still holds the complete original history. Never
+  pushed, so GitHub does not see it. Safe to delete once GitHub is confirmed good.
+* GitHub's Contributors panel is a **cached fragment**. Git-side the history is clean — 32 commits, every
+  one authored *and* committed by `Shaikh Zeeyan <ziyu.shaikh.01@gmail.com>`, zero `Co-Authored-By:`
+  trailers of any kind, and one single ref on the remote — and the repo homepage HTML now contains zero
+  occurrences of the string `claude`. The rendered panel can still lag a rewrite by minutes to hours.
+* **Still open:** the README Requirements section says `Node.js 18+`, but the installed `next@16.3.3`
+  declares `>=20.9.0`.
+
 ## 2026-09-06 — CoreConsole V1 visual elevation / "wow" pass
 
 🎯 **Focus:** Pure visual elevation — turn a clean developer dashboard into an agent mission console.
