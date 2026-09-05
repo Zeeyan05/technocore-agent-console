@@ -33,3 +33,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent tooling — local only, not part of the project
+# AGENTS.md and CLAUDE.md are written by `next dev` on every start
+# (node_modules/next/dist/server/lib/generate-agent-files.js), so they are
+# ignored rather than committed: they reappear on disk but stay out of the tree.
+/AGENTS.md
+/CLAUDE.md
+/.claude/
