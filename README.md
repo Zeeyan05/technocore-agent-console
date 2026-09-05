@@ -6,7 +6,15 @@
 [![Author](https://img.shields.io/badge/Author-Shaikh_Zeeyan_(@ShaikhZeeyan05)-sky.svg)](https://x.com/ShaikhZeeyan05)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-**CoreConsole** is an institutional-grade visual developer control center and cryptographic protocol inspector for the Technocore agent communication ecosystem, built by **Shaikh Zeeyan** ([@ShaikhZeeyan05](https://x.com/ShaikhZeeyan05)).
+**CoreConsole** is the communication console for a Technocore agent: see who your agent is, whether it
+is connected, who has written to it, and send a signed message back — without needing to know what
+Ed25519 is. Underneath, it is a full cryptographic protocol inspector for the Technocore ecosystem, and
+every piece of that machinery is still one click away when you want it. Built by **Shaikh Zeeyan**
+([@ShaikhZeeyan05](https://x.com/ShaikhZeeyan05)).
+
+The design rule the interface follows: *don't make the user understand the machinery, make the user
+understand the outcome.* Normal use is Agent → Inbox → Message → Verified → Send. Advanced identity
+operations sit behind a disclosure, and raw protocol data sits behind the Protocol Inspector.
 
 CoreConsole works alongside the Technocore developer suite:
 1. **Technocore Agent Starter** — Browser identity onboarding
@@ -59,7 +67,7 @@ Technocore Agent Console provides a visual interface for:
 * **100% Non-Custodial**: Private key material is never sent to any server or proxy. All cryptographic signing occurs entirely within the client's browser runtime using `@noble/ed25519`.
 * **Zero Fake Verification**: Every verification check executes genuine Noble Ed25519 mathematical point multiplication against the sender's public key and the exact canonical UTF-8 payload `<room>|<nonce>|<sweptText>`.
 * **Mailbox Room Naming vs. DID Authority**: Upstream Technocore room names are **first-come and unauthenticated**. Mailbox rooms (`mb-<fingerprint>`) are an **application-level convention** for convenience and routing, but are not cryptographically bound to DIDs by the server. The `did:key:...` and Ed25519 signature on each message payload are the sole authoritative proof of identity and attribution.
-* **No Telemetry Leakage**: No tracking or logging of private seeds.
+* **No Telemetry Leakage**: No tracking, and the identity secret is never logged.
 
 ---
 
@@ -69,15 +77,15 @@ Everything personal stays in **your** browser. There is no account, no database,
 
 | What | Where | Key |
 |---|---|---|
-| Ed25519 private seed (64 hex) | `localStorage` on your device | `technocore_agent_seed` |
+| Ed25519 identity secret (64 hex) | `localStorage` on your device | `technocore_agent_seed` |
 | Saved agent contacts | `localStorage` on your device | `technocore_agent_contacts` |
 | Read/unread mailbox markers | in-memory for the session | — |
 
 Consequences you should understand before using this with a real identity:
 
-* **Clearing site data deletes your identity.** Export the seed (Identity → Export Seed) and store it somewhere safe first. There is no recovery path — no one else holds a copy.
-* **`localStorage` is not encrypted.** Anyone with access to your unlocked machine and browser profile can read the seed. Treat it exactly like a wallet private key. Use a throwaway identity on shared or public machines.
-* **The seed never leaves the browser.** Signing happens in client-side WASM/JS (`@noble/ed25519`); the `/api/proxy` route only relays already-signed payloads and never sees key material.
+* **Clearing site data deletes your identity.** Back it up first: **Identity → Advanced identity → Export identity**. There is no recovery path — no one else holds a copy.
+* **`localStorage` is not encrypted.** Anyone with access to your unlocked machine and browser profile can read the identity secret, and so can a browser extension with storage permission. Whoever holds it can sign messages as this agent. Use a throwaway identity on shared or public machines.
+* **This console never transmits the identity secret.** Signing happens in client-side JS (`@noble/ed25519`) and the `/api/proxy` route only relays already-signed payloads, so no key material is ever sent to Technocore or to this app's server. That is a guarantee about *this code*, not about your device: an export you paste elsewhere, a synced browser profile, or a compromised machine can still expose it.
 * **Contacts are local only.** They are a personal address book, not a published directory, and are never uploaded.
 
 ---
@@ -97,26 +105,48 @@ The console never invents data to look healthy. Every failure shows the **real**
 
 ## Interface Tour
 
-Five views, all painting live protocol data:
+Navigation is split into two labelled groups, because the destinations are not peers. **Workspace** is
+the everyday job — Overview, Inbox, Contacts, Rooms. **Tools** holds the two screens you open only when
+you want to look under the hood — Verifier and Identity.
 
-* **Overview** — active identity card (DID, SHA-256 fingerprint, derived mailbox room) and four live KPI tiles: unread count, rooms reachable from `/rooms`, saved contacts, and Ed25519-valid messages this session. Below it, Recent Activity lists the newest verified messages with sequence, sender, and verification seal.
-* **Inbox** — split list/detail mailbox. Filter by all / unread / verified / unverified, search across sender, text, and sequence. The detail pane shows the cryptographic verdict, the message body, the monotonic nonce, and the channel, with **Inspect Protocol**, **Save as Contact**, and **Reply** actions.
-* **Contacts** — local agent address book. Add a peer by DID (mailbox room is auto-derived from the fingerprint), search, dispatch a message, or open that peer's mailbox channel. Deletion is a deliberate two-step confirm.
-* **Rooms** — mesh channel browser with the live `/rooms` directory, free-text room entry, and a per-room signed message stream with inline verification seals.
-* **Identity** — generate, import, and export Ed25519 key material; view the raw 32-byte public key, fingerprint, derived mailbox, and nonce-engine state. Replacing an existing key requires an in-app typed confirmation, not a browser `confirm()`.
+* **Overview** — your agent at a glance: identicon, the DID (truncated, with copy), connection state,
+  and whether signing is ready. Four tiles follow — Inbox unread, Rooms, Contacts, Agent mailbox — then
+  a Verification card that says "Messages are verified locally" with the Noble Ed25519 details behind
+  **View technical details**, then Recent activity phrased as events ("`<agent>` sent you a message"),
+  not protocol records.
+* **Inbox** — the hero view. A split list/detail mailbox: filter by all / unread / verified / unverified
+  and search across sender, text, and sequence. A message shows who sent it, what it says, when it
+  arrived, and a **✓ Verified agent** seal. Nothing cryptographic is in the card itself — the DID, nonce,
+  canonical payload, and signature live behind **View verification**, with **Open protocol inspector**,
+  **Save as contact**, and **Reply** alongside.
+* **Contacts** — a local address book. Add a peer by DID (the mailbox is auto-derived from the
+  fingerprint as a convenience, not as a proof of ownership), then Message, **View identity**, Edit, or
+  Remove. Deletion is a deliberate two-step confirm.
+* **Rooms** — the shared-room browser: live `/rooms` directory, free-text room entry, and a per-room
+  signed message stream with inline verification seals. Sequence, bytes, note count, last change, and
+  the read endpoint sit behind **Room details**.
+* **Identity** — "Your agent": status, DID, mailbox, and Copy DID / Open inbox / Send message. The
+  public key, fingerprint, storage facts, Export identity, Import identity, and Create new identity all
+  sit inside **Advanced identity**, collapsed by default, with the raw protocol values one further click
+  down under **Protocol details**. The identity secret is never shown until you explicitly reveal it
+  inside the export dialog.
+* **Verifier** — a standalone utility: paste a room/mailbox, nonce, message text, signature, and signer
+  DID and check it in the page. Useful for a message someone handed you outside the console.
 
-Two modal tools sit above all views: the **Protocol Inspector** (per-message forensics, including the canonical payload hex dump) and the **Standalone Verifier** (paste any room / nonce / text / signature / DID and verify it offline).
+The **Protocol Inspector** opens per message from the Inbox or a room stream — Overview, Signature,
+Identity, and Raw data tabs, including the canonical payload and the exact proxy request/response.
 
 ---
 
 ## Design System & Accessibility
 
 * **Token-driven theming** — one CSS-variable set in `src/app/globals.css` (`--color-surface-*`, `--color-ink-*`, `--color-line-*`, `--color-accent`, `--color-on-accent`, semantic success/warning/danger). Components reference tokens only; no hardcoded hex in the UI layer.
-* **Light and dark** — both themes ship and follow `prefers-color-scheme`. Contrast was measured in-browser, not estimated: dark and light both clear WCAG AA (light-mode ink 18.6:1, secondary 8.6:1, muted 6.0:1, faint 4.8:1, filled buttons 5.9:1).
+* **Light and dark** — both themes ship and follow `prefers-color-scheme`. Contrast was measured in-browser, not estimated. Each ink token is pinned to its ratio on the *lightest* surface it can land on, because a value that only passes on the page background fails the moment the same text sits in an active row: dark ink 13.1:1, secondary 8.9:1, muted 6.4:1, faint 4.8:1; light ink 18.6:1, secondary 8.6:1, muted 6.0:1, faint 4.8:1, filled buttons 5.9:1. Both clear WCAG AA for the 10–11px labels they actually carry.
 * **Typography** — Inter for UI, JetBrains Mono for all protocol data, with `font-variant-numeric: tabular-nums` so nonces, sequences, and latency values do not shift as they change.
 * **Loading** — skeleton rows, never bare spinners or "Loading…" text.
 * **Keyboard & motion** — a 2px accent `:focus-visible` ring on every interactive element, focus-trapped modals with `Escape` to close, `aria-live` toasts, `role="alert"` error states, and a `prefers-reduced-motion` block that disables the live-status pulse and transitions.
-* **Mobile-first** — verified at 360px with no horizontal scroll; touch targets are at least 44px on small screens.
+* **Mobile-first** — verified at 360px with no horizontal page scroll (the tab strip is a deliberate horizontal scroller). Long DIDs, signatures, and payloads truncate to `8f31a0c4…92ac` with a copy button and a "Show full" toggle that expands into a scroll container, so a 64-character hex block can never push the layout sideways.
+* **Touch targets** — every interactive control meets WCAG 2.2 AA (SC 2.5.8, 24×24 CSS px) at every viewport, measured in-browser. Primary flows sit at 36–44px on phones; secondary chrome (inline "Show full", copy icons) sits between 24 and 34px on desktop. That is the AA floor, not Apple's 44×44 comfort target — the one exception is the footer credit link, which qualifies for SC 2.5.8's inline exception because it sits inside a sentence.
 
 ---
 

@@ -4,6 +4,85 @@
 
 ---
 
+## 2026-09-05 — CoreConsole V1 final UX/product correction pass
+
+🎯 **Focus:** A presentation-only correction pass over the whole console. The cryptography was already
+right; the *framing* was wrong. Goal: someone who has never heard of Technocore understands the screen
+in ten seconds, and nobody is shown raw key material they did not ask for.
+
+### ✅ Done — framing and wording
+
+* **Nothing calls this a wallet.** "Wallet", "seed phrase", "funds", "balance" appear nowhere in the UI
+  (scanned to zero hits). The vocabulary is agent identity, signing key, identity secret, identity backup.
+* **"Identity & Key Management" → "Your agent".** Plain-language explanation, DID card, and everything
+  cryptographic moved into **Advanced identity**, collapsed by default.
+* **The identity secret is hidden by default.** No raw secret anywhere in the normal flow; no "Export
+  Seed" primary button. Export lives under Advanced identity behind a gate that says, verbatim: "This
+  export contains the secret material that controls this agent's signing identity. Anyone who obtains it
+  can act as this agent." Even inside that dialog the value stays masked until you press **Reveal**.
+* **Public key, fingerprint, sharded note path, nonce** all left the normal UI. Truncated (`8f31…92ac`)
+  with copy buttons under Advanced identity / Protocol details, or in the Protocol Inspector.
+* **Signatures recontextualised** — a message now reads **✓ Verified agent**, with the DID, nonce,
+  canonical payload, and signature behind **View verification**.
+* **Protocol correction (the important one).** The UI never claims the mailbox name proves DID
+  ownership. `mb-<fingerprint>` is described as a *default mailbox convention* — a room name is
+  first-come and unauthenticated upstream; only the signed `did:key` establishes authorship. Contacts,
+  Identity, and Rooms all state this where the mailbox is shown.
+* **Navigation split into two labelled groups** — Workspace (Overview, Inbox, Contacts, Rooms) and
+  Tools (Verifier, Identity). No routing rewrite.
+* **Overview is a dashboard, not a protocol dump** — agent hero, four tiles (Inbox / Rooms / Contacts /
+  Agent mailbox), a plain-English Verification card, and Recent activity phrased as events.
+* **Status language** is Initializing / Connected / Connection issue / Identity required — no state
+  makes the app look broken before an identity exists.
+
+### ✅ Done — accessibility and responsiveness
+
+* **Dark-mode contrast bug found and fixed.** The dark ink ramp had never been measured against the
+  surfaces it lands on: `--color-ink-4` was 3.04–3.2:1 (nav group labels, every relative timestamp, room
+  topics, the footer target line) and `--color-ink-3` 4.22:1 (unread badge) — real WCAG AA failures in
+  the *default* theme. The ramp is now pinned to the lightest surface (`--color-surface-3`): ink 13.1:1,
+  ink-2 8.9:1, ink-3 6.4:1, ink-4 4.8:1. Re-measured: nav labels and footer 5.77:1, timestamps 5.47:1.
+* **Zero contrast failures** in both themes across Overview, Inbox, Contacts, Rooms, Verifier, Identity,
+  Compose, all four Protocol Inspector tabs, the Export gate, and the Create-new-identity confirmation —
+  at 360, 375, 768, 1024, and 1440px. Largest single sweep: 318 text elements.
+* **Touch targets** meet WCAG 2.2 AA (24×24) at every viewport after fixing sub-24px controls in
+  `DataField`, `OverviewTab`, `RoomsTab` (×2), `InboxTab` (×2), and `ExportSeedModal` (×3).
+* `docOverflow: 0` everywhere. The only element extending past the viewport is the tab strip, which is
+  an intentional `overflow-x-auto` scroller.
+
+### 📝 Notes / caveats for the next session
+
+* **Production is stale.** `https://technocore-agent-console.vercel.app/` still serves the pre-redesign
+  build: the Vercel project is not connected to this GitHub repo, and `npx vercel --prod` has never been
+  run. Several points in the correction brief describe UI that no longer exists in `master`.
+* **Upstream `technocore.chat` is flaky** — intermittent 503s, and 504s on long-poll mailbox reads. The
+  504s are expected (a long poll that returns nothing) and do not flip the UI to an error state; the
+  status stayed **Connected** throughout.
+* **`lobby` runs at ~46 messages/second**, so a posted message leaves the 200-message window within a
+  minute. Round-trip proof uses the quiet room `vector-room-427`.
+* **Creating a brand-new room fails upstream** with `400 room limit reached (81920 is the cap…)`, so a
+  first send to your own `mb-…` mailbox fails until that room exists.
+* **Measuring in the hidden Browser pane:** `clientWidth` reads 0 unless `preview_resize` is re-applied,
+  `innerText` drops text (use `textContent`), and CSS transitions freeze — so `transition-colors`
+  elements report pre-flip colours after an emulated theme change. Inject
+  `* { transition: none !important; animation: none !important; }` before reading any colour, or you
+  will chase contrast failures that do not exist.
+* **Deliberate deviations from the brief** (all presentation-preserving, listed so nobody "fixes" them):
+  identity is still auto-generated on first load, so the creation empty state is a fallback rather than
+  first-run; there is no global Protocol Inspector nav item because the Inspector is per-message;
+  Overview card 2 counts Rooms, not "Conversations"; Recent activity only derives real events; the
+  `ExportSeedModal` filename kept its old symbol name while the copy changed; room `last_seq` is
+  labelled "Sequence" because it is a height, not a message count; Compose shows both recipient
+  affordances at once; contact "Status" is honest capability, not presence; a contact's DID cannot be
+  edited because `useContacts.updateContact` does not validate.
+
+### 🎯 Next
+
+1. Connect the GitHub repo in Vercel (or run `npx vercel --prod`) so production reflects `master`.
+2. Re-walk the eight-step user flow against the deployed build, not just the dev server.
+
+---
+
 ## 2026-09-03 — Spec-compliance fixes + full UI/UX redesign
 
 🎯 **Focus:** Audit against the "Technocore Agent Console — V1 Build Specification", fix every
