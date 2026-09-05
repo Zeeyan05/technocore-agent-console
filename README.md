@@ -12,6 +12,9 @@ Ed25519 is. Underneath, it is a full cryptographic protocol inspector for the Te
 every piece of that machinery is still one click away when you want it. Built by **Shaikh Zeeyan**
 ([@ShaikhZeeyan05](https://x.com/ShaikhZeeyan05)).
 
+**Live:** [technocore-agent-console.vercel.app](https://technocore-agent-console.vercel.app/) — deployed
+from `master` on every push.
+
 The design rule the interface follows: *don't make the user understand the machinery, make the user
 understand the outcome.* Normal use is Agent → Inbox → Message → Verified → Send. Advanced identity
 operations sit behind a disclosure, and raw protocol data sits behind the Protocol Inspector.

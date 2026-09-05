@@ -74,9 +74,12 @@ in ten seconds, and nobody is shown raw key material they did not ask for.
   and all three "Show full" crypto blocks expanded — **zero contrast failures**, `docOverflow: 0`, and
   all 22 right-edge offenders inside the nav's intentional `overflow-x-auto` scroller.
 
-* **Production is stale.** `https://technocore-agent-console.vercel.app/` still serves the pre-redesign
-  build: the Vercel project is not connected to this GitHub repo, and `npx vercel --prod` has never been
-  run. Several points in the correction brief describe UI that no longer exists in `master`.
+* **Production is live and matches `master`.** Zack connected the GitHub repo in Vercel, so
+  `https://technocore-agent-console.vercel.app/` now deploys on push. Verified against the *deployed*
+  bundle, not the dev server: the shipped CSS carries the new dark ink ramp (`#838a9d`, `#9aa3b2`,
+  `#b8c0cf`, `#e8eaf0`) with zero occurrences of the old `#5a6170` / `#7a8194`, and the shipped JS
+  carries both `b876817` touch-target class strings with the old `p-1 rounded text-ink-4 …` gone — so
+  production is serving the newest commit, not an intermediate one.
 * **Upstream `technocore.chat` is flaky** — intermittent 503s, and 504s on long-poll mailbox reads. The
   504s are expected (a long poll that returns nothing) and do not flip the UI to an error state; the
   status stayed **Connected** throughout.
@@ -98,10 +101,24 @@ in ten seconds, and nobody is shown raw key material they did not ask for.
   affordances at once; contact "Status" is honest capability, not presence; a contact's DID cannot be
   edited because `useContacts.updateContact` does not validate.
 
+### ✅ Done — shipped and verified on production
+
+* Vercel Git integration connected by Zack; `master` now auto-deploys. Confirmed the deployed bundle
+  is the newest commit (see the CSS/JS markers above), and audited the shipped strings rather than the
+  source: **zero** hits for `seed phrase`, `crypto wallet`, `Wallet keys`, `Export Seed`,
+  `Create Wallet`, `portfolio`, `balance`, `funds`; exactly **one** `wallet` occurrence, which is
+  point 24's own sentence saying the secret is *not* sent "as a wallet credential". Every required
+  string is live — the point-26 export warning, the point-27 confirmation, the three point-31 empty
+  states, the point-32 status vocabulary, `Verified agent`, `View verification`,
+  `Messages are verified locally`, `Advanced identity`, `Default mailbox convention`,
+  `Open protocol inspector`. The only match for `bound to your DID` is inside the negation
+  "Room names on Technocore are first-come and are **not** cryptographically bound to your DID",
+  which is the point-13 correction itself.
+
 ### 🎯 Next
 
-1. Connect the GitHub repo in Vercel (or run `npx vercel --prod`) so production reflects `master`.
-2. Re-walk the eight-step user flow against the deployed build, not just the dev server.
+1. Nothing outstanding on the correction pass. Optional: rename `master` → `main`, and add real
+   screenshots to the README (this harness cannot write binary files into the repo).
 
 ---
 
@@ -185,6 +202,7 @@ real design-token system with light + dark themes.
   "Interface Tour" section describes each view instead.
 * Vercel is linked via the **CLI** (`.vercel/project.json`, gitignored), not a Git integration. A
   push to GitHub will **not** auto-deploy until the repo is connected in the Vercel dashboard.
+  → **Resolved 2026-09-05:** the repo is now connected; pushes to `master` deploy to production.
 
 ### ✅ Done — published
 
@@ -195,9 +213,8 @@ real design-token system with light + dark themes.
 
 ### 🔄 Next
 
-* **Vercel is not connected to this repo.** The deployment is CLI-linked
-  (`.vercel/project.json`, gitignored), so pushing to `master` does **not** deploy. Either run
-  `npx vercel --prod`, or connect the repo under Vercel → Project → Settings → Git to get
-  push-to-deploy.
+* ~~**Vercel is not connected to this repo.** The deployment is CLI-linked
+  (`.vercel/project.json`, gitignored), so pushing to `master` does **not** deploy.~~
+  **Done 2026-09-05** — repo connected in the Vercel dashboard; `master` is push-to-deploy.
 * Optional: rename the default branch `master` → `main` for consistency with newer tooling
   defaults (`gh repo edit --default-branch main` after pushing a `main` branch).
