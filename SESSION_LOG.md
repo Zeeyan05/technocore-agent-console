@@ -4,6 +4,65 @@
 
 ---
 
+## 2026-09-06 — CoreConsole V1 visual elevation / "wow" pass
+
+🎯 **Focus:** Pure visual elevation — turn a clean developer dashboard into an agent mission console.
+Zero functional change: signing, verification, nonce handling, the canonical payload, mailbox and room
+behaviour, the API proxy and persistence are byte-for-byte identical. Only what a person sees changed.
+
+### ✅ Done — the pass
+
+* **A design foundation instead of per-component styling.** One motion system (durations 120/180/240/320ms,
+  three easings), surfaces that are a fill + 1px top highlight + shadow rather than "another bordered box",
+  an accent edge for selected rows, an ambient light/dot field behind everything, and a connection
+  heartbeat that lives on a pseudo-element so it never moves layout.
+* **AgentIdentityMark** — a deterministic SVG mark hashed from the DID (FNV-1a → xorshift32). Same DID
+  always draws the same mark. No network call, no image assets, no external service; works offline. Used
+  on Overview, Inbox, message detail, Contacts, Identity and the header.
+* **Overview** leads with an identity hero (mark, agent, DID, connected, signing ready), four metrics that
+  are deliberately *not* four identical rectangles, and an activity column that reports real system events
+  (mailbox connected · verification ready · Technocore reached with measured latency) instead of saying
+  "nothing has happened yet" on a working console.
+* **Protocol Inspector** became the instrument: a large verification state, a MESSAGE → CANONICAL →
+  ED25519 → IDENTITY → VERIFIED flow, then values grouped Identity / Message / Cryptography, every long
+  value truncated with copy + Show full.
+* **Inbox** keeps its split layout, gains sender marks and an accent-lit selected row, and its detail pane
+  presents the sender as a verified entity before it offers cryptography.
+* **Rooms** improves room identity without becoming an explorer. **Contacts** became an Agent Directory
+  that looks composed with a single contact. **Identity** keeps the previous correction intact.
+
+### ✅ Done — three real bugs the sweep turned up
+
+* **Compose was unusable on a phone.** At 360×740 the panel rendered 808px tall inside a 740px window
+  with `top: -24`; the backdrop has no scroll, so **"Send message" was unreachable**. Both it and the
+  export dialog now cap at `max-h-[90vh]` and scroll internally (verified: 666px panel, 154px of internal
+  scroll, all three buttons reachable). ExportSeedModal's Cancel (38px) and Done (34px) came onto the
+  project's 44px phone tap height — on the one dialog that hands over secret material, Cancel being the
+  smaller target was backwards.
+* **Two light-mode contrast misses, measured not guessed.** `--color-ink-4` was 4.35:1 on `--color-surface-2`
+  and `--color-success` was 4.29:1 on its own tint — which is exactly where the Verified seal sits. Both
+  tokens darkened; the ink ramp is now pinned to the tinted surface each tier actually lands on, not to
+  white. Post-fix: 0 failures on every screen in both themes.
+* **A truncated label in the inspector.** At 360px "Canonical payload bytes (hex)" ellipsised away the one
+  word that distinguishes it from the payload-text block above it. Those labels now wrap.
+
+### 📝 Notes / verification
+
+* **§40 gate green:** `npx tsc --noEmit` 0 errors · `npx vitest run` 18/18 across 5 files (no test file
+  edited) · `npm run build` succeeded.
+* **Contrast audited in-browser, 0 failures**, dark *and* light, at 360×740, transitions disabled: Rooms 333
+  elements · Overview 61 · Inbox 27 (262 when populated) · Contacts 33 · Identity 48 (63 with Advanced open)
+  · all four Inspector tabs · Verifier · Compose · both export screens. `docOverflow: 0` everywhere.
+* **The earlier contrast numbers were wrong** and were re-measured. Tailwind 4 emits `oklab()`/`oklch()`
+  from computed style; the first auditor regex-parsed those strings and produced 163 phantom failures.
+  Colours must be parsed through a canvas in this codebase — never a regex.
+* **Two side effects to know about:** a test contact "Oracle relay" sits in this browser's saved contacts
+  (remove it with the card's Remove button), and one signed message was published to the public room
+  `vector-room-427` as `seq 187` while testing the send path end to end. Messages cannot be unsent.
+* Protocol version is read live from `/config` — it reported **v0.12.2** during this pass. Never pinned.
+
+---
+
 ## 2026-09-05 — CoreConsole V1 final UX/product correction pass
 
 🎯 **Focus:** A presentation-only correction pass over the whole console. The cryptography was already
